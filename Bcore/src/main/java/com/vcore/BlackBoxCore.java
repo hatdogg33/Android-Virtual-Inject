@@ -331,11 +331,29 @@ public class BlackBoxCore extends ClientConfiguration {
     }
 
     public List<ApplicationInfo> getInstalledApplications(int flags, int userId) {
-        return getBPackageManager().getInstalledApplications(flags, userId);
+        try {
+            BPackageManager pm = getBPackageManager();
+            if (pm == null || pm.getService() == null) {
+                return new ArrayList<>();
+            }
+            return pm.getInstalledApplications(flags, userId);
+        } catch (Exception e) {
+            Log.e(TAG, "getInstalledApplications failed", e);
+            return new ArrayList<>();
+        }
     }
 
     public List<PackageInfo> getInstalledPackages(int flags, int userId) {
-        return getBPackageManager().getInstalledPackages(flags, userId);
+        try {
+            BPackageManager pm = getBPackageManager();
+            if (pm == null || pm.getService() == null) {
+                return new ArrayList<>();
+            }
+            return pm.getInstalledPackages(flags, userId);
+        } catch (Exception e) {
+            Log.e(TAG, "getInstalledPackages failed", e);
+            return new ArrayList<>();
+        }
     }
 
     public void clearPackage(String packageName, int userId) {

@@ -32,6 +32,7 @@ import com.reveny.virtualinject.ui.dialog.BlurBehindDialogBuilder;
 import com.reveny.virtualinject.util.Utility;
 import com.reveny.virtualinject.util.chrome.LinkTransformationMethod;
 import com.vcore.BlackBoxCore;
+import com.vcore.entity.pm.InstallResult;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -109,6 +110,7 @@ public class HomeFragment extends BaseFragment {
                 Toast.makeText(getActivity(), "Injecting " + pendingInjectAppName + "...", Toast.LENGTH_SHORT).show();
                 new Thread(() -> {
                     try {
+                        Thread.sleep(1000);
                         BlackBoxCore.get().launchApk(pendingInjectPackage, 0);
                     } catch (Exception e) {
                         Log.e(TAG, "Failed to launch after inject", e);
@@ -180,37 +182,34 @@ public class HomeFragment extends BaseFragment {
 
         binding.fabAddApp.setOnClickListener(v -> showCloneDialog());
 
-        BlackBoxCore.get().setOnServicesReadyListener(() -> {
-            if (binding == null) return;
-            binding.statusText.setVisibility(View.GONE);
+        binding.statusText.setOnClickListener(v -> {
+            Toast.makeText(requireContext(), "Retrying...", Toast.LENGTH_SHORT).show();
             refreshClonedApps();
         });
 
-        startPollingServicesReady();
+        startPolling();
 
         return binding.getRoot();
     }
 
-    private void startPollingServicesReady() {
+    private void startPolling() {
         uiHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 if (binding == null) return;
-                if (BlackBoxCore.get().isServicesReady()) {
-                    binding.statusText.setVisibility(View.GONE);
-                    refreshClonedApps();
-                } else {
-                    uiHandler.postDelayed(this, 2000);
+                refreshClonedApps();
+                if (adapter.getItemCount() == 0) {
+                    uiHandler.postDelayed(this, 3000);
                 }
             }
-        }, 2000);
+        }, 3000);
     }
 
     private void refreshClonedApps() {
         try {
             List<Utility.AppInfo> clonedApps = new ArrayList<>();
             var packages = BlackBoxCore.get().getInstalledPackages(0, 0);
-            if (packages != null) {
+            if (packages != null && !packages.isEmpty()) {
                 android.content.pm.PackageManager pm = requireContext().getPackageManager();
                 for (var pkg : packages) {
                     String appName = pkg.applicationInfo != null
@@ -224,10 +223,18 @@ public class HomeFragment extends BaseFragment {
             binding.clonedAppsList.setVisibility(clonedApps.isEmpty() ? View.GONE : View.VISIBLE);
             binding.emptyState.setVisibility(clonedApps.isEmpty() ? View.VISIBLE : View.GONE);
 
+            if (clonedApps.isEmpty()) {
+                binding.emptyState.setText("No cloned apps yet.\nTap + to add one.");
+            } else {
+                binding.statusText.setVisibility(View.GONE);
+            }
+
         } catch (Exception e) {
             Log.e(TAG, "Failed to load cloned apps", e);
+            adapter.setApps(new ArrayList<>());
+            binding.clonedAppsList.setVisibility(View.GONE);
             binding.emptyState.setVisibility(View.VISIBLE);
-            binding.emptyState.setText("Failed to load apps");
+            binding.emptyState.setText("No cloned apps yet.\nTap + to add one.");
         }
     }
 
@@ -264,22 +271,22 @@ public class HomeFragment extends BaseFragment {
 
         new Thread(() -> {
             try {
-                BlackBoxCore.get().installPackageAsUser(app.packageName, 0);
-                boolean isInstalled = BlackBoxCore.get().isInstalled(app.packageName, 0);
+                InstallResult result = BlackBoxCore.get().installPackageAsUser(app.packageName, 0);
 
                 uiHandler.post(() -> {
                     if (binding == null) return;
-                    if (isInstalled) {
+                    if (result != null && result.success) {
                         Toast.makeText(requireContext(), "Cloned: " + app.appName, Toast.LENGTH_SHORT).show();
-                        refreshClonedApps();
                     } else {
-                        Toast.makeText(requireContext(), "Failed to clone " + app.appName, Toast.LENGTH_SHORT).show();
+                        String msg = result != null ? result.msg : "Unknown error";
+                        Toast.makeText(requireContext(), "Clone failed: " + msg, Toast.LENGTH_LONG).show();
                     }
+                    refreshClonedApps();
                 });
             } catch (Exception e) {
                 Log.e(TAG, "Clone failed", e);
                 uiHandler.post(() ->
-                    Toast.makeText(requireContext(), "Clone failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Clone failed: " + e.getMessage(), Toast.LENGTH_LONG).show()
                 );
             }
         }).start();

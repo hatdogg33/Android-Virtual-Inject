@@ -80,13 +80,11 @@ public class HomeFragment extends BaseFragment {
             libraryPath = Objects.requireNonNull(fileUri.getPath()).replace("/document/primary:", Environment.getExternalStorageDirectory().getPath() + "/");
             Toast.makeText(getActivity(), "File Selected: " + libraryPath, Toast.LENGTH_LONG).show();
 
-            // Define destination file in cache directory
             File dest = new File(requireContext().getCacheDir(), "libinject.so");
 
             try (InputStream inputStream = requireContext().getContentResolver().openInputStream(fileUri);
                  OutputStream outputStream = new FileOutputStream(dest)) {
 
-                // Copy the file content from InputStream to OutputStream
                 byte[] buffer = new byte[1024];
                 int bytesRead;
                 while ((bytesRead = inputStream.read(buffer)) != -1) {
@@ -116,13 +114,20 @@ public class HomeFragment extends BaseFragment {
         binding.nestedScrollView.getBorderViewDelegate().setBorderVisibilityChangedListener((top, oldTop, bottom, oldBottom) -> binding.appBar.setLifted(!top));
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
 
-        setupApplist();
+        setButtonsEnabled(false);
+        binding.statusText.setVisibility(View.VISIBLE);
+        binding.statusText.setText("Initializing services...");
+
+        BlackBoxCore.get().setOnServicesReadyListener(() -> {
+            if (binding == null) return;
+            binding.statusText.setVisibility(View.GONE);
+            setButtonsEnabled(true);
+            setupApplist();
+        });
 
         binding.libPathChoose.setEndIconOnClickListener(v -> {
             Intent chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
             chooseFile.setType("*/*");
-
-            // For .so
             chooseFile.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/octet-stream"});
             chooseFile = Intent.createChooser(chooseFile, "Choose a .so file");
             startActivityForResult(chooseFile, 1);
@@ -160,6 +165,12 @@ public class HomeFragment extends BaseFragment {
         });
 
         return binding.getRoot();
+    }
+
+    private void setButtonsEnabled(boolean enabled) {
+        binding.installButton.setEnabled(enabled);
+        binding.launchButton.setEnabled(enabled);
+        binding.appSelectorText.setEnabled(enabled);
     }
 
     private void setupApplist() {
@@ -210,7 +221,6 @@ public class HomeFragment extends BaseFragment {
 
 
     private void showAbout() {
-        // Showing the About Dialog
         new AboutDialog().show(getChildFragmentManager(), "about");
     }
 

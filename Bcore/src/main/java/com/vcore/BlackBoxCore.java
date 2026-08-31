@@ -74,6 +74,8 @@ public class BlackBoxCore extends ClientConfiguration {
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final int mHostUid = Process.myUid();
     private final int mHostUserId = UserHandle.myUserId.call();
+    private volatile boolean mServicesReady = false;
+    private Runnable mOnServicesReady;
 
     public static BlackBoxCore get() {
         return sBlackBoxCore;
@@ -159,7 +161,27 @@ public class BlackBoxCore extends ClientConfiguration {
             ContentProviderDelegate.init();
         }
         if (!isServerProcess()) {
-            ServiceManager.initBlackManager();
+            new Thread(() -> {
+                ServiceManager.initBlackManager();
+                mServicesReady = true;
+                if (mOnServicesReady != null) {
+                    mHandler.post(mOnServicesReady);
+                }
+            }, "ServiceManagerInit").start();
+        }
+    }
+
+    public boolean isServicesReady() {
+        return mServicesReady;
+    }
+
+    public void setOnServicesReadyListener(Runnable listener) {
+        if (mServicesReady) {
+            if (listener != null) {
+                listener.run();
+            }
+        } else {
+            mOnServicesReady = listener;
         }
     }
 

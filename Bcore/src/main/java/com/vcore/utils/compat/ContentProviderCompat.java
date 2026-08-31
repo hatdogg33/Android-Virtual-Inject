@@ -45,7 +45,7 @@ public class ContentProviderCompat {
         if (client == null) {
             int retry = 0;
             while (retry < retryCount && client == null) {
-                SystemClock.sleep(400);
+                SystemClock.sleep(200);
                 retry++;
                 client = acquireContentProviderClient(context, uri);
             }

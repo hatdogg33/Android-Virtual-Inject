@@ -10,7 +10,7 @@ import com.vcore.utils.compat.ContentProviderCompat;
 public class ProviderCall {
     public static Bundle callSafely(String authority, String methodName, String arg, Bundle bundle) {
         try {
-            return call(authority, BlackBoxCore.getContext(), methodName, arg, bundle, 5);
+            return call(authority, BlackBoxCore.getContext(), methodName, arg, bundle, 3);
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }

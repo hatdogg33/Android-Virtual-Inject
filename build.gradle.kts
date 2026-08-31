@@ -19,10 +19,10 @@ buildscript {
 }
 
 plugins {
-    id("com.android.application") version "8.3.2" apply false
+    alias(libs.plugins.agp.app) apply false
+    alias(libs.plugins.agp.lib) apply false
     id("org.jetbrains.kotlin.android") version "2.0.0" apply false
-    id("com.android.library") version "8.3.2" apply false
-    id("dev.rikka.tools.materialthemebuilder") version "1.4.1" apply false
+    alias(libs.plugins.materialthemebuilder) apply false
 }
 
 tasks.register<Delete>("clean") {

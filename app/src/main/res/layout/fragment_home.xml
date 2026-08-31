@@ -62,6 +62,16 @@
             android:paddingVertical="?dialogPreferredPadding"
             tools:context=".ui.activity.MainActivity">
 
+            <TextView
+                android:id="@+id/status_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:text="Initializing services..."
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:visibility="gone" />
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/app_selector"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"

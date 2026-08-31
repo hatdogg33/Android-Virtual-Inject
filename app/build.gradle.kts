@@ -12,19 +12,47 @@ android {
         applicationId = "com.reveny.virtualinject"
         minSdk = 26
         targetSdk = 35
-        versionCode = 102
-        versionName = "1.0.2"
+        versionCode = 103
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
+            val keyAlias = System.getenv("KEY_ALIAS")
+            val keyPassword = System.getenv("KEY_PASSWORD")
+
+            if (keystorePath != null && keystorePassword != null) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePassword
+                this.keyAlias = keyAlias!!
+                this.keyPassword = keyPassword!!
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val signingConfigs = listOfNotNull(
+                signingConfigs.findByName("release").takeIf {
+                    System.getenv("KEYSTORE_PATH") != null
+                }
+            )
+            if (signingConfigs.isNotEmpty()) {
+                signingConfig = signingConfigs.first()
+            }
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
 
@@ -40,19 +68,14 @@ android {
     buildFeatures {
         buildConfig = true
         viewBinding = true
+        aidl = true
+        prefab = true
     }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
-    }
-
-    buildFeatures {
-        aidl = true
-        prefab = true
-        viewBinding = true
-        buildConfig = true
     }
 
     ndkVersion = (rootProject.ext["ndkVersion"] as String)

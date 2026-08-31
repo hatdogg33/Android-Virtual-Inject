@@ -7,7 +7,6 @@ android {
     namespace = "com.vcore"
     compileSdk = (rootProject.ext["compileSdk"] as Int)
 
-
     defaultConfig {
         minSdk = (rootProject.ext["minSdk"] as Int)
         consumerProguardFiles("consumer-rules.pro")
@@ -15,11 +14,12 @@ android {
             useSupportLibrary = true
         }
 
-        ndk.apply{
+        ndk.apply {
             abiFilters.add("armeabi-v7a")
             abiFilters.add("arm64-v8a")
         }
     }
+
     val cmake = rootProject.ext["cmakeVersion"] as String
     externalNativeBuild {
         cmake {
@@ -30,7 +30,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false  //not tested yet
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -38,31 +38,29 @@ android {
         }
         debug {
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
-    buildFeatures{
+
+    buildFeatures {
         aidl = true
         prefab = true
         viewBinding = true
     }
 
     packagingOptions.apply {
-        excludes.add("**/libshadowhook.so")
+        jniLibs.excludes.add("**/libshadowhook.so")
     }
 }
 
-// it make update dependency update easy
 val ktxversion = rootProject.ext["ktx_version"] as String
 val stdlib_version = rootProject.ext["stdlib_version"] as String
 val hiddenapibypass = rootProject.ext["hiddenapibypass"] as String
@@ -76,10 +74,10 @@ dependencies {
     }
     implementation("androidx.core:core-ktx:$ktxversion")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$stdlib_version")
-    implementation ("com.iqiyi.xcrash:xcrash-android-lib:$xcrashversion")
+    implementation("com.iqiyi.xcrash:xcrash-android-lib:$xcrashversion")
     implementation("com.google.android.material:material:$googlematerial")
-    implementation ("org.lsposed.hiddenapibypass:hiddenapibypass:$hiddenapibypass")
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:$hiddenapibypass")
     implementation("com.bytedance.android:shadowhook:$shadowhook")
-    implementation ("top.canyie.pine:core:0.2.8")
-    implementation ("top.canyie.pine:xposed:0.0.9")
+    implementation("top.canyie.pine:core:0.2.8")
+    implementation("top.canyie.pine:xposed:0.0.9")
 }

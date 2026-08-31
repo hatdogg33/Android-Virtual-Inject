@@ -218,17 +218,33 @@ public class BlackBoxCore extends ClientConfiguration {
     }
 
     public boolean launchApk(String packageName, int userId) {
-        Intent launchIntentForPackage = getBPackageManager().getLaunchIntentForPackage(packageName, userId);
-        if (launchIntentForPackage == null) {
+        try {
+            BPackageManager pm = getBPackageManager();
+            if (pm == null || pm.getService() == null) {
+                return false;
+            }
+            Intent launchIntentForPackage = pm.getLaunchIntentForPackage(packageName, userId);
+            if (launchIntentForPackage == null) {
+                return false;
+            }
+            startActivity(launchIntentForPackage, userId);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "launchApk failed", e);
             return false;
         }
-
-        startActivity(launchIntentForPackage, userId);
-        return true;
     }
 
     public boolean isInstalled(String packageName, int userId) {
-        return getBPackageManager().isInstalled(packageName, userId);
+        try {
+            BPackageManager pm = getBPackageManager();
+            if (pm == null || pm.getService() == null) {
+                return false;
+            }
+            return pm.isInstalled(packageName, userId);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public void uninstallPackageAsUser(String packageName, int userId) {
@@ -242,7 +258,11 @@ public class BlackBoxCore extends ClientConfiguration {
     public InstallResult installPackageAsUser(String packageName, int userId) {
         try {
             PackageInfo packageInfo = getPackageManager().getPackageInfo(packageName, 0);
-            return getBPackageManager().installPackageAsUser(packageInfo.applicationInfo.sourceDir, InstallOption.installBySystem(), userId);
+            BPackageManager pm = getBPackageManager();
+            if (pm == null || pm.getService() == null) {
+                return new InstallResult().installError("Package manager not available");
+            }
+            return pm.installPackageAsUser(packageInfo.applicationInfo.sourceDir, InstallOption.installBySystem(), userId);
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
             return new InstallResult().installError(e.getMessage());

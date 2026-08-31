@@ -152,14 +152,6 @@ public class HomeFragment extends BaseFragment {
             setInstallButtonsEnabled(true);
         });
 
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-            if (binding == null) return;
-            if (!BlackBoxCore.get().isServicesReady()) {
-                binding.statusText.setText("Services taking long, buttons enabled anyway");
-                setInstallButtonsEnabled(true);
-            }
-        }, 5000);
-
         binding.fabAddApp.setOnClickListener(v -> showAppPicker());
 
         binding.libPathChoose.setEndIconOnClickListener(v -> {
@@ -170,6 +162,10 @@ public class HomeFragment extends BaseFragment {
         });
 
         binding.installButton.setOnClickListener(v -> {
+            if (!BlackBoxCore.get().isServicesReady()) {
+                Toast.makeText(requireContext(), "Services not ready yet, please wait", Toast.LENGTH_SHORT).show();
+                return;
+            }
             if (selectedApp != null) {
                 Log.i(TAG, "Installing: " + selectedApp);
                 BlackBoxCore.get().installPackageAsUser(selectedApp, 0);
@@ -188,6 +184,10 @@ public class HomeFragment extends BaseFragment {
         });
 
         binding.launchButton.setOnClickListener(v -> {
+            if (!BlackBoxCore.get().isServicesReady()) {
+                Toast.makeText(requireContext(), "Services not ready yet, please wait", Toast.LENGTH_SHORT).show();
+                return;
+            }
             if (selectedApp != null && libraryPath != null) {
                 boolean isInstalled = BlackBoxCore.get().isInstalled(selectedApp, 0);
                 if (!isInstalled) {

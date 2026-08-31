@@ -2,6 +2,7 @@ package com.reveny.virtualinject.ui.fragment;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.method.LinkMovementMethod;
@@ -11,19 +12,20 @@ import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
-import android.content.Intent;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.text.HtmlCompat;
 import androidx.fragment.app.DialogFragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.reveny.virtualinject.BuildConfig;
 import com.reveny.virtualinject.R;
 import com.reveny.virtualinject.databinding.DialogAboutBinding;
 import com.reveny.virtualinject.databinding.FragmentHomeBinding;
+import com.reveny.virtualinject.ui.adapter.ClonedAppsAdapter;
 import com.reveny.virtualinject.ui.dialog.BlurBehindDialogBuilder;
 import com.reveny.virtualinject.util.Utility;
 import com.reveny.virtualinject.util.chrome.LinkTransformationMethod;
@@ -34,18 +36,19 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 import rikka.material.app.LocaleDelegate;
 
 public class HomeFragment extends BaseFragment {
     private static final String TAG = "VirtualInjectLog";
-
-    private String selectedApp;
-    private String selectedAppName;
-    private String libraryPath;
+    private static final int PICK_SO_FILE = 1;
 
     private FragmentHomeBinding binding;
+    private ClonedAppsAdapter adapter;
+    private String pendingInjectPackage;
+    private String pendingInjectAppName;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -64,7 +67,7 @@ public class HomeFragment extends BaseFragment {
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode != 1 || resultCode != Activity.RESULT_OK) {
+        if (requestCode != PICK_SO_FILE || resultCode != Activity.RESULT_OK) {
             return;
         }
 
@@ -74,7 +77,6 @@ public class HomeFragment extends BaseFragment {
         }
 
         Uri fileUri = data.getData();
-
         String displayName = getFileName(fileUri);
         if (displayName == null || !displayName.endsWith(".so")) {
             Toast.makeText(getActivity(), "Please select a .so file", Toast.LENGTH_SHORT).show();
@@ -97,20 +99,23 @@ public class HomeFragment extends BaseFragment {
                 outputStream.write(buffer, 0, bytesRead);
             }
 
-            libraryPath = dest.getAbsolutePath();
-            Log.i(TAG, "Copied library file to: " + libraryPath);
-            binding.libPath.setText(displayName);
-            Toast.makeText(getActivity(), "Library loaded: " + displayName, Toast.LENGTH_SHORT).show();
+            String libraryPath = dest.getAbsolutePath();
+            Log.i(TAG, "Library loaded: " + libraryPath);
+
+            if (pendingInjectPackage != null) {
+                Toast.makeText(getActivity(), "Injecting " + pendingInjectAppName + "...", Toast.LENGTH_SHORT).show();
+                BlackBoxCore.get().launchApk(pendingInjectPackage, 0);
+            }
 
         } catch (IOException e) {
             Log.e(TAG, "Failed to copy library file", e);
-            Toast.makeText(getActivity(), "Failed to copy library file", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), "Failed to load library", Toast.LENGTH_SHORT).show();
         }
     }
 
     private String getFileName(Uri uri) {
         String name = null;
-        if (uri.getScheme().equals("content")) {
+        if ("content".equals(uri.getScheme())) {
             try (android.database.Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
                 if (cursor != null && cursor.moveToFirst()) {
                     int index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
@@ -142,75 +147,68 @@ public class HomeFragment extends BaseFragment {
         binding.nestedScrollView.getBorderViewDelegate().setBorderVisibilityChangedListener((top, oldTop, bottom, oldBottom) -> binding.appBar.setLifted(!top));
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
 
-        setInstallButtonsEnabled(false);
         binding.statusText.setVisibility(View.VISIBLE);
         binding.statusText.setText("Initializing services...");
+
+        binding.clonedAppsList.setLayoutManager(new LinearLayoutManager(requireContext()));
+        adapter = new ClonedAppsAdapter();
+        binding.clonedAppsList.setAdapter(adapter);
+
+        adapter.setOnAppClickListener(new ClonedAppsAdapter.OnAppClickListener() {
+            @Override
+            public void onAppClick(Utility.AppInfo app) {
+                showAppOptionsDialog(app);
+            }
+
+            @Override
+            public void onInjectClick(Utility.AppInfo app) {
+                startInject(app);
+            }
+        });
+
+        binding.fabAddApp.setOnClickListener(v -> showCloneDialog());
 
         BlackBoxCore.get().setOnServicesReadyListener(() -> {
             if (binding == null) return;
             binding.statusText.setVisibility(View.GONE);
-            setInstallButtonsEnabled(true);
-        });
-
-        binding.fabAddApp.setOnClickListener(v -> showAppPicker());
-
-        binding.libPathChoose.setEndIconOnClickListener(v -> {
-            Intent chooseFile = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            chooseFile.addCategory(Intent.CATEGORY_OPENABLE);
-            chooseFile.setType("*/*");
-            startActivityForResult(chooseFile, 1);
-        });
-
-        binding.installButton.setOnClickListener(v -> {
-            if (!BlackBoxCore.get().isServicesReady()) {
-                Toast.makeText(requireContext(), "Services not ready yet, please wait", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (selectedApp != null) {
-                Log.i(TAG, "Installing: " + selectedApp);
-                BlackBoxCore.get().installPackageAsUser(selectedApp, 0);
-
-                boolean isInstalled = BlackBoxCore.get().isInstalled(selectedApp, 0);
-                Log.i(TAG, "isInstalled: " + isInstalled);
-                if (!isInstalled) {
-                    Toast.makeText(requireContext(), "Failed to install", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                Toast.makeText(requireContext(), "Installed: " + selectedAppName, Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(requireContext(), "Tap + to select an app", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        binding.launchButton.setOnClickListener(v -> {
-            if (!BlackBoxCore.get().isServicesReady()) {
-                Toast.makeText(requireContext(), "Services not ready yet, please wait", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (selectedApp != null && libraryPath != null) {
-                boolean isInstalled = BlackBoxCore.get().isInstalled(selectedApp, 0);
-                if (!isInstalled) {
-                    Toast.makeText(requireContext(), "Please install the app first", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                Log.i(TAG, "Launching: " + selectedApp);
-                BlackBoxCore.get().launchApk(selectedApp, 0);
-            } else {
-                Toast.makeText(requireContext(), "Select an app and library first", Toast.LENGTH_SHORT).show();
-            }
+            refreshClonedApps();
         });
 
         return binding.getRoot();
     }
 
-    private void setInstallButtonsEnabled(boolean enabled) {
-        binding.installButton.setEnabled(enabled);
-        binding.launchButton.setEnabled(enabled);
+    private void refreshClonedApps() {
+        if (!BlackBoxCore.get().isServicesReady()) return;
+
+        try {
+            List<Utility.AppInfo> clonedApps = new ArrayList<>();
+            var packages = BlackBoxCore.get().getInstalledPackages(0, 0);
+            if (packages != null) {
+                android.content.pm.PackageManager pm = requireContext().getPackageManager();
+                for (var pkg : packages) {
+                    String appName = pkg.applicationInfo != null
+                        ? pm.getApplicationLabel(pkg.applicationInfo).toString()
+                        : pkg.packageName;
+                    clonedApps.add(new Utility.AppInfo(appName, pkg.packageName));
+                }
+            }
+
+            adapter.setApps(clonedApps);
+            binding.clonedAppsList.setVisibility(clonedApps.isEmpty() ? View.GONE : View.VISIBLE);
+            binding.emptyState.setVisibility(clonedApps.isEmpty() ? View.VISIBLE : View.GONE);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load cloned apps", e);
+            binding.emptyState.setVisibility(View.VISIBLE);
+            binding.emptyState.setText("Failed to load apps");
+        }
     }
 
-    private void showAppPicker() {
-        if (!isAdded() || getContext() == null) return;
+    private void showCloneDialog() {
+        if (!BlackBoxCore.get().isServicesReady()) {
+            Toast.makeText(requireContext(), "Services not ready yet, please wait", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         try {
             List<Utility.AppInfo> apps = Utility.getInstalledApps(requireContext());
@@ -229,17 +227,61 @@ public class HomeFragment extends BaseFragment {
             new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Select App to Clone")
                 .setItems(appNames, (dialog, which) -> {
-                    selectedApp = packageNames[which];
-                    selectedAppName = apps.get(which).appName;
-                    binding.selectedAppLabel.setText(selectedAppName + "\n" + packageNames[which]);
-                    Log.i(TAG, "Selected: " + selectedApp);
+                    cloneApp(apps.get(which));
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
         } catch (Exception e) {
-            Log.e(TAG, "Failed to show app picker", e);
-            Toast.makeText(requireContext(), "Failed to load apps: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Failed to show clone dialog", e);
+            Toast.makeText(requireContext(), "Failed to load apps", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void cloneApp(Utility.AppInfo app) {
+        Log.i(TAG, "Cloning: " + app.packageName);
+        BlackBoxCore.get().installPackageAsUser(app.packageName, 0);
+
+        boolean isInstalled = BlackBoxCore.get().isInstalled(app.packageName, 0);
+        if (isInstalled) {
+            Toast.makeText(requireContext(), "Cloned: " + app.appName, Toast.LENGTH_SHORT).show();
+            refreshClonedApps();
+        } else {
+            Toast.makeText(requireContext(), "Failed to clone " + app.appName, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showAppOptionsDialog(Utility.AppInfo app) {
+        String[] options = {"Inject .so", "Launch", "Uninstall"};
+
+        new MaterialAlertDialogBuilder(requireContext())
+            .setTitle(app.appName)
+            .setItems(options, (dialog, which) -> {
+                switch (which) {
+                    case 0:
+                        startInject(app);
+                        break;
+                    case 1:
+                        BlackBoxCore.get().launchApk(app.packageName, 0);
+                        break;
+                    case 2:
+                        BlackBoxCore.get().uninstallPackage(app.packageName);
+                        Toast.makeText(requireContext(), "Uninstalled: " + app.appName, Toast.LENGTH_SHORT).show();
+                        refreshClonedApps();
+                        break;
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void startInject(Utility.AppInfo app) {
+        pendingInjectPackage = app.packageName;
+        pendingInjectAppName = app.appName;
+
+        Intent chooseFile = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        chooseFile.addCategory(Intent.CATEGORY_OPENABLE);
+        chooseFile.setType("*/*");
+        startActivityForResult(chooseFile, PICK_SO_FILE);
     }
 
     public static class AboutDialog extends DialogFragment {

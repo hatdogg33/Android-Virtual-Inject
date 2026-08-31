@@ -23,6 +23,7 @@ import com.vcore.fake.hook.HookManager;
 import com.vcore.fake.hook.IInjectHook;
 import com.vcore.fake.service.HCallbackProxy;
 import com.vcore.fake.service.IActivityClientProxy;
+import black.pairip.PairIpHook;
 import com.vcore.utils.compat.ActivityCompat;
 import com.vcore.utils.compat.ActivityManagerCompat;
 import com.vcore.utils.compat.BuildCompat;
@@ -137,6 +138,9 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
     public void callApplicationOnCreate(Application app) {
         checkHCallback();
         super.callApplicationOnCreate(app);
+        try {
+            PairIpHook.hookIfPresent(app.getClassLoader());
+        } catch (Throwable ignored) { }
     }
 
     public Activity newActivity(ClassLoader cl, String className, Intent intent) throws InstantiationException, IllegalAccessException, ClassNotFoundException {

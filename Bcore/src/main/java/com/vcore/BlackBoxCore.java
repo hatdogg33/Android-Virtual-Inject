@@ -164,12 +164,12 @@ public class BlackBoxCore extends ClientConfiguration {
             new Thread(() -> {
                 try {
                     ServiceManager.initBlackManager();
-                    mServicesReady = true;
-                    if (mOnServicesReady != null) {
-                        mHandler.post(mOnServicesReady);
-                    }
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to initialize services", e);
+                }
+                mServicesReady = true;
+                if (mOnServicesReady != null) {
+                    mHandler.post(mOnServicesReady);
                 }
             }, "ServiceManagerInit").start();
         }
@@ -373,10 +373,16 @@ public class BlackBoxCore extends ClientConfiguration {
             return binder;
         }
 
-        Bundle bundle = new Bundle();
-        bundle.putString("_B_|_server_name_", name);
-        Bundle vm = ProviderCall.callSafely(ProxyManifest.getBindProvider(), "VM", null, bundle);
-        binder = BundleCompat.getBinder(vm, "_B_|_server_");
+        try {
+            Bundle bundle = new Bundle();
+            bundle.putString("_B_|_server_name_", name);
+            Bundle vm = ProviderCall.callSafely(ProxyManifest.getBindProvider(), "VM", null, bundle);
+            if (vm != null) {
+                binder = BundleCompat.getBinder(vm, "_B_|_server_");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "getService failed for: " + name, e);
+        }
 
         Slog.d(TAG, "getService: " + name + ", " + binder);
         mServices.put(name, binder);

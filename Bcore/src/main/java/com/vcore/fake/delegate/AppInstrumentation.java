@@ -137,10 +137,10 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
     @Override
     public void callApplicationOnCreate(Application app) {
         checkHCallback();
-        super.callApplicationOnCreate(app);
         try {
             PairIpHook.hookIfPresent(app.getClassLoader());
         } catch (Throwable ignored) { }
+        super.callApplicationOnCreate(app);
     }
 
     public Activity newActivity(ClassLoader cl, String className, Intent intent) throws InstantiationException, IllegalAccessException, ClassNotFoundException {

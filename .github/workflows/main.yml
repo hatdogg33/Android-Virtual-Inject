@@ -61,7 +61,7 @@ jobs:
       - name: Generate Keystore for Signing
         run: |
           keytool -genkeypair -v \
-            -keystore release.keystore \
+            -keystore app/release.keystore \
             -alias release \
             -keyalg RSA \
             -keysize 2048 \

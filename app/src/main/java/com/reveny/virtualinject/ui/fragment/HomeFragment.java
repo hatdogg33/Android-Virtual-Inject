@@ -18,14 +18,11 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.text.HtmlCompat;
 import androidx.fragment.app.DialogFragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.reveny.virtualinject.BuildConfig;
 import com.reveny.virtualinject.R;
 import com.reveny.virtualinject.databinding.DialogAboutBinding;
-import com.reveny.virtualinject.databinding.DialogAppPickerBinding;
 import com.reveny.virtualinject.databinding.FragmentHomeBinding;
 import com.reveny.virtualinject.ui.dialog.BlurBehindDialogBuilder;
 import com.reveny.virtualinject.util.Utility;

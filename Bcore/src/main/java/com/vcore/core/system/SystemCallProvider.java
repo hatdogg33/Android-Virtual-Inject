@@ -23,8 +23,8 @@ public class SystemCallProvider extends ContentProvider {
     private boolean initSystem() {
         try {
             BlackBoxSystem.getSystem().startup();
-        } catch (Exception e) {
-            Slog.e(TAG, "BlackBoxSystem startup failed", e);
+        } catch (Throwable t) {
+            Slog.e(TAG, "BlackBoxSystem startup failed", t);
         }
         return true;
     }

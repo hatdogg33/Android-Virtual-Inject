@@ -1,16 +1,12 @@
 package black;
 
-import android.os.Build;
 import android.util.Log;
-
-import org.lsposed.hiddenapibypass.HiddenApiBypass;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.List;
 
 @SuppressWarnings({"WeakerAccess", "unchecked"})
 public class Reflector {
@@ -106,13 +102,7 @@ public class Reflector {
                 method.setAccessible(true);
                 return method;
             } catch (NoSuchMethodException e) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    try {
-                        Method method = HiddenApiBypass.getDeclaredMethod(clazz, name, parameterTypes);
-                        method.setAccessible(true);
-                        return method;
-                    } catch (Exception ignored) { }
-                }
+                // skip
             }
             clazz = clazz.getSuperclass();
         }
@@ -129,15 +119,7 @@ public class Reflector {
                 }
             }
         } catch (Throwable e) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                List<Method> methods = HiddenApiBypass.getDeclaredMethods(clazz);
-                for (Method method : methods) {
-                    if (method.getName().equals(name)) {
-                        method.setAccessible(true);
-                        return method;
-                    }
-                }
-            }
+            Log.w(TAG, "getDeclaredMethods failed for " + clazz.getName(), e);
         }
         return null;
     }
@@ -185,40 +167,16 @@ public class Reflector {
             constructor.setAccessible(true);
             return constructor;
         } catch (NoSuchMethodException e) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                try {
-                    Constructor<T> constructor = (Constructor<T>) HiddenApiBypass.getDeclaredConstructor(clazz, parameterTypes);
-                    constructor.setAccessible(true);
-                    return constructor;
-                } catch (Exception ignored) { }
-            }
+            Log.w(TAG, "getDeclaredConstructor failed for " + clazz.getName(), e);
         }
         return null;
     }
 
     private static Field findInstanceField(Class<?> clazz, String name) throws NoSuchFieldException {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            List<Field> fields = HiddenApiBypass.getInstanceFields(clazz);
-            for (Field field : fields) {
-                if (field.getName().equals(name)) {
-                    field.setAccessible(true);
-                    return field;
-                }
-            }
-        }
         throw new NoSuchFieldException();
     }
 
     private static Field findStaticField(Class<?> clazz, String name) throws NoSuchFieldException {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            List<Field> fields = HiddenApiBypass.getStaticFields(clazz);
-            for (Field field : fields) {
-                if (field.getName().equals(name)) {
-                    field.setAccessible(true);
-                    return field;
-                }
-            }
-        }
         throw new NoSuchFieldException();
     }
 

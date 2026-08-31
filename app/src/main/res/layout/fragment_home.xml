@@ -34,7 +34,6 @@
                 tools:ignore="PrivateResource" />
         </com.google.android.material.appbar.CollapsingToolbarLayout>
 
-
     </com.google.android.material.appbar.AppBarLayout>
 
     <FrameLayout
@@ -74,18 +73,23 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/app_selector"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="Select Target Package">
+                android:hint="Target App"
+                app:endIconDrawable="@drawable/baseline_add_24"
+                app:endIconMode="custom">
 
-                <AutoCompleteTextView
+                <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/app_selector_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="none"
+                    android:enabled="false"
+                    android:focusable="false"
+                    android:hint="Tap + to select app"
                     tools:ignore="LabelFor" />
+
             </com.google.android.material.textfield.TextInputLayout>
 
             <LinearLayout

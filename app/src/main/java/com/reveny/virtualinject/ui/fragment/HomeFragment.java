@@ -10,7 +10,6 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.Toast;
 import android.content.Intent;
 
@@ -19,10 +18,14 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.text.HtmlCompat;
 import androidx.fragment.app.DialogFragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.reveny.virtualinject.BuildConfig;
 import com.reveny.virtualinject.R;
 import com.reveny.virtualinject.databinding.DialogAboutBinding;
+import com.reveny.virtualinject.databinding.DialogAppPickerBinding;
 import com.reveny.virtualinject.databinding.FragmentHomeBinding;
 import com.reveny.virtualinject.ui.dialog.BlurBehindDialogBuilder;
 import com.reveny.virtualinject.util.Utility;
@@ -42,6 +45,7 @@ public class HomeFragment extends BaseFragment {
     private static final String TAG = "VirtualInjectLog";
 
     private String selectedApp;
+    private String selectedAppName;
     private String libraryPath;
 
     private FragmentHomeBinding binding;
@@ -149,8 +153,11 @@ public class HomeFragment extends BaseFragment {
             if (binding == null) return;
             binding.statusText.setVisibility(View.GONE);
             setButtonsEnabled(true);
-            setupApplist();
         });
+
+        binding.appSelector.setEndIconOnClickListener(v -> showAppPicker());
+
+        binding.appSelectorText.setOnClickListener(v -> showAppPicker());
 
         binding.libPathChoose.setEndIconOnClickListener(v -> {
             Intent chooseFile = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -168,9 +175,10 @@ public class HomeFragment extends BaseFragment {
                 Log.i(TAG, "isInstalled: " + isInstalled);
                 if (!isInstalled) {
                     Toast.makeText(requireContext(), "Failed to install", Toast.LENGTH_SHORT).show();
+                    return;
                 }
 
-                Toast.makeText(requireContext(), "Installed", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Installed: " + selectedAppName, Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(requireContext(), "Please select an app", Toast.LENGTH_SHORT).show();
             }
@@ -186,7 +194,7 @@ public class HomeFragment extends BaseFragment {
                 Log.i(TAG, "Launching: " + selectedApp);
                 BlackBoxCore.get().launchApk(selectedApp, 0);
             } else {
-                Toast.makeText(requireContext(), "Please select a valid app and library path", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Please select an app and library", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -196,32 +204,34 @@ public class HomeFragment extends BaseFragment {
     private void setButtonsEnabled(boolean enabled) {
         binding.installButton.setEnabled(enabled);
         binding.launchButton.setEnabled(enabled);
-        binding.appSelectorText.setEnabled(enabled);
     }
 
-    private void setupApplist() {
-        List<String> installedApps = Utility.getInstalledApps(requireContext());
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            installedApps
-        );
-        binding.appSelectorText.setAdapter(adapter);
+    private void showAppPicker() {
+        if (getContext() == null) return;
 
-        binding.appSelectorText.setOnItemClickListener((parent, view, position, id) -> {
-            String selected = (String) parent.getItemAtPosition(position);
-            selectedApp = selected;
-            Log.i(TAG, "Selected: " + selected);
-        });
-        binding.appSelectorText.setOnFocusChangeListener((view, hasFocus) -> {
-            if (hasFocus) return;
+        List<Utility.AppInfo> apps = Utility.getInstalledApps(requireContext());
+        if (apps.isEmpty()) {
+            Toast.makeText(requireContext(), "No apps found", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-            String currText = binding.appSelectorText.getText().toString();
-            if (installedApps.stream().noneMatch(c -> c.equals(currText))) {
-                binding.appSelectorText.setText("");
-                selectedApp = null;
-            }
-        });
+        String[] appNames = new String[apps.size()];
+        String[] packageNames = new String[apps.size()];
+        for (int i = 0; i < apps.size(); i++) {
+            appNames[i] = apps.get(i).appName + "\n" + apps.get(i).packageName;
+            packageNames[i] = apps.get(i).packageName;
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Select App to Clone")
+            .setItems(appNames, (dialog, which) -> {
+                selectedApp = packageNames[which];
+                selectedAppName = apps.get(which).appName;
+                binding.appSelectorText.setText(apps.get(which).appName + " (" + packageNames[which] + ")");
+                Log.i(TAG, "Selected: " + selectedApp);
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 
     public static class AboutDialog extends DialogFragment {
@@ -245,11 +255,9 @@ public class HomeFragment extends BaseFragment {
         }
     }
 
-
     private void showAbout() {
         new AboutDialog().show(getChildFragmentManager(), "about");
     }
-
 
     @Override
     public void onDestroyView() {

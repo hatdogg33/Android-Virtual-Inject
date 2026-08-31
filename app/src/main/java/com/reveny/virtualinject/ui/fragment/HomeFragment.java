@@ -152,9 +152,7 @@ public class HomeFragment extends BaseFragment {
             setButtonsEnabled(true);
         });
 
-        binding.appSelector.setEndIconOnClickListener(v -> showAppPicker());
-
-        binding.appSelectorText.setOnClickListener(v -> showAppPicker());
+        binding.fabAddApp.setOnClickListener(v -> showAppPicker());
 
         binding.libPathChoose.setEndIconOnClickListener(v -> {
             Intent chooseFile = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -177,7 +175,7 @@ public class HomeFragment extends BaseFragment {
 
                 Toast.makeText(requireContext(), "Installed: " + selectedAppName, Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(requireContext(), "Please select an app", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Tap + to select an app", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -191,7 +189,7 @@ public class HomeFragment extends BaseFragment {
                 Log.i(TAG, "Launching: " + selectedApp);
                 BlackBoxCore.get().launchApk(selectedApp, 0);
             } else {
-                Toast.makeText(requireContext(), "Please select an app and library", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Select an app and library first", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -201,6 +199,7 @@ public class HomeFragment extends BaseFragment {
     private void setButtonsEnabled(boolean enabled) {
         binding.installButton.setEnabled(enabled);
         binding.launchButton.setEnabled(enabled);
+        binding.fabAddApp.setEnabled(enabled);
     }
 
     private void showAppPicker() {
@@ -224,7 +223,7 @@ public class HomeFragment extends BaseFragment {
             .setItems(appNames, (dialog, which) -> {
                 selectedApp = packageNames[which];
                 selectedAppName = apps.get(which).appName;
-                binding.appSelectorText.setText(apps.get(which).appName + " (" + packageNames[which] + ")");
+                binding.selectedAppLabel.setText(selectedAppName + "\n" + packageNames[which]);
                 Log.i(TAG, "Selected: " + selectedApp);
             })
             .setNegativeButton("Cancel", null)

@@ -13,8 +13,7 @@ public class Utility {
         List<String> ret = new ArrayList<>();
 
         for (ApplicationInfo appInfo : packages) {
-            // Check if the application is not a system app and not the current app
-            if ((appInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0 && !appInfo.packageName.equals(context.getPackageName())) {
+            if (!appInfo.packageName.equals(context.getPackageName())) {
                 ret.add(appInfo.packageName);
             }
         }

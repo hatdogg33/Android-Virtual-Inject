@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -36,7 +35,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
-import java.util.Objects;
 
 import rikka.material.app.LocaleDelegate;
 
@@ -76,32 +74,61 @@ public class HomeFragment extends BaseFragment {
 
         Uri fileUri = data.getData();
 
-        if (fileUri != null && fileUri.getPath() != null && fileUri.getPath().endsWith(".so")) {
-            libraryPath = Objects.requireNonNull(fileUri.getPath()).replace("/document/primary:", Environment.getExternalStorageDirectory().getPath() + "/");
-            Toast.makeText(getActivity(), "File Selected: " + libraryPath, Toast.LENGTH_LONG).show();
-
-            File dest = new File(requireContext().getCacheDir(), "libinject.so");
-
-            try (InputStream inputStream = requireContext().getContentResolver().openInputStream(fileUri);
-                 OutputStream outputStream = new FileOutputStream(dest)) {
-
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
-                }
-
-                Log.i(TAG, "Copied library file to: " + dest.getAbsolutePath());
-                binding.libPath.setText(libraryPath);
-
-            } catch (IOException e) {
-                Log.e(TAG, "Failed to copy library file", e);
-                Toast.makeText(getActivity(), "Failed to copy library file", Toast.LENGTH_SHORT).show();
-                e.printStackTrace();
-            }
-        } else {
-            Toast.makeText(getActivity(), "Invalid file type selected. Please select a .so or .dex file.", Toast.LENGTH_SHORT).show();
+        String displayName = getFileName(fileUri);
+        if (displayName == null || !displayName.endsWith(".so")) {
+            Toast.makeText(getActivity(), "Please select a .so file", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        File dest = new File(requireContext().getCacheDir(), "libinject.so");
+
+        try (InputStream inputStream = requireContext().getContentResolver().openInputStream(fileUri);
+             OutputStream outputStream = new FileOutputStream(dest)) {
+
+            if (inputStream == null) {
+                Toast.makeText(getActivity(), "Failed to read file", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+
+            libraryPath = dest.getAbsolutePath();
+            Log.i(TAG, "Copied library file to: " + libraryPath);
+            binding.libPath.setText(displayName);
+            Toast.makeText(getActivity(), "Library loaded: " + displayName, Toast.LENGTH_SHORT).show();
+
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to copy library file", e);
+            Toast.makeText(getActivity(), "Failed to copy library file", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private String getFileName(Uri uri) {
+        String name = null;
+        if (uri.getScheme().equals("content")) {
+            try (android.database.Cursor cursor = requireContext().getContentResolver().query(uri, null, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                    if (index >= 0) {
+                        name = cursor.getString(index);
+                    }
+                }
+            }
+        }
+        if (name == null) {
+            name = uri.getPath();
+            if (name != null) {
+                int cut = name.lastIndexOf('/');
+                if (cut >= 0) {
+                    name = name.substring(cut + 1);
+                }
+            }
+        }
+        return name;
     }
 
     @Override
@@ -126,10 +153,9 @@ public class HomeFragment extends BaseFragment {
         });
 
         binding.libPathChoose.setEndIconOnClickListener(v -> {
-            Intent chooseFile = new Intent(Intent.ACTION_GET_CONTENT);
+            Intent chooseFile = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            chooseFile.addCategory(Intent.CATEGORY_OPENABLE);
             chooseFile.setType("*/*");
-            chooseFile.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/octet-stream"});
-            chooseFile = Intent.createChooser(chooseFile, "Choose a .so file");
             startActivityForResult(chooseFile, 1);
         });
 

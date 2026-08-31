@@ -25,7 +25,8 @@ public class Utility {
         List<AppInfo> ret = new ArrayList<>();
 
         for (ApplicationInfo appInfo : packages) {
-            if (!appInfo.packageName.equals(context.getPackageName())) {
+            boolean isSystemApp = (appInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+            if (!isSystemApp && !appInfo.packageName.equals(context.getPackageName())) {
                 String appName = pm.getApplicationLabel(appInfo).toString();
                 ret.add(new AppInfo(appName, appInfo.packageName));
             }

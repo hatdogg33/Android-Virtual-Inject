@@ -56,6 +56,8 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
         }
     }
 
+    private ClassLoader targetAppClassLoader;
+
     private Instrumentation getCurrInstrumentation() {
         Object currentActivityThread = BlackBoxCore.mainThread();
         return ActivityThread.mInstrumentation.get(currentActivityThread);
@@ -109,14 +111,25 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
         ActivityInfo info = black.android.app.Activity.mActivityInfo.get(activity);
         ContextCompat.fix(activity);
         ActivityCompat.fix(activity);
-        if (info.theme != 0) {
-            activity.getTheme().applyStyle(info.theme, true);
+
+        ActivityInfo targetInfo = null;
+        try {
+            targetInfo = activity.getIntent().getParcelableExtra("_B_|_activity_info_");
+        } catch (Throwable ignored) { }
+
+        int themeRes = (targetInfo != null && targetInfo.theme != 0) ? targetInfo.theme : info.theme;
+        if (themeRes != 0) {
+            activity.getTheme().applyStyle(themeRes, true);
         }
-        ActivityManagerCompat.setActivityOrientation(activity, info.screenOrientation);
+
+        if (targetInfo != null && targetInfo.screenOrientation != ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) {
+            ActivityManagerCompat.setActivityOrientation(activity, targetInfo.screenOrientation);
+        }
     }
 
     @Override
     public Application newApplication(ClassLoader cl, String className, Context context) throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+        targetAppClassLoader = cl;
         ContextCompat.fix(context);
         //BActivityThread.currentActivityThread().loadXposed(context);
         return super.newApplication(cl, className, context);
@@ -137,8 +150,9 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
     @Override
     public void callApplicationOnCreate(Application app) {
         checkHCallback();
+        ClassLoader cl = targetAppClassLoader != null ? targetAppClassLoader : app.getClassLoader();
         try {
-            PairIpHook.hookIfPresent(app.getClassLoader());
+            PairIpHook.hookIfPresent(cl);
         } catch (Throwable ignored) { }
         super.callApplicationOnCreate(app);
     }

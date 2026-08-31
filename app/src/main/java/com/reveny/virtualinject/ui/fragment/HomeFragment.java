@@ -5,6 +5,8 @@ import android.app.Dialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -49,6 +51,7 @@ public class HomeFragment extends BaseFragment {
     private ClonedAppsAdapter adapter;
     private String pendingInjectPackage;
     private String pendingInjectAppName;
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -104,7 +107,16 @@ public class HomeFragment extends BaseFragment {
 
             if (pendingInjectPackage != null) {
                 Toast.makeText(getActivity(), "Injecting " + pendingInjectAppName + "...", Toast.LENGTH_SHORT).show();
-                BlackBoxCore.get().launchApk(pendingInjectPackage, 0);
+                new Thread(() -> {
+                    try {
+                        BlackBoxCore.get().launchApk(pendingInjectPackage, 0);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Failed to launch after inject", e);
+                        uiHandler.post(() ->
+                            Toast.makeText(getActivity(), "Launch failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                        );
+                    }
+                }).start();
             }
 
         } catch (IOException e) {
@@ -148,7 +160,7 @@ public class HomeFragment extends BaseFragment {
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
 
         binding.statusText.setVisibility(View.VISIBLE);
-        binding.statusText.setText("Initializing services...");
+        binding.statusText.setText("Starting virtual engine...");
 
         binding.clonedAppsList.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new ClonedAppsAdapter();
@@ -174,12 +186,27 @@ public class HomeFragment extends BaseFragment {
             refreshClonedApps();
         });
 
+        startPollingServicesReady();
+
         return binding.getRoot();
     }
 
-    private void refreshClonedApps() {
-        if (!BlackBoxCore.get().isServicesReady()) return;
+    private void startPollingServicesReady() {
+        uiHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (binding == null) return;
+                if (BlackBoxCore.get().isServicesReady()) {
+                    binding.statusText.setVisibility(View.GONE);
+                    refreshClonedApps();
+                } else {
+                    uiHandler.postDelayed(this, 2000);
+                }
+            }
+        }, 2000);
+    }
 
+    private void refreshClonedApps() {
         try {
             List<Utility.AppInfo> clonedApps = new ArrayList<>();
             var packages = BlackBoxCore.get().getInstalledPackages(0, 0);
@@ -205,11 +232,6 @@ public class HomeFragment extends BaseFragment {
     }
 
     private void showCloneDialog() {
-        if (!BlackBoxCore.get().isServicesReady()) {
-            Toast.makeText(requireContext(), "Services not ready yet, please wait", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         try {
             List<Utility.AppInfo> apps = Utility.getInstalledApps(requireContext());
             if (apps.isEmpty()) {
@@ -238,16 +260,29 @@ public class HomeFragment extends BaseFragment {
     }
 
     private void cloneApp(Utility.AppInfo app) {
-        Log.i(TAG, "Cloning: " + app.packageName);
-        BlackBoxCore.get().installPackageAsUser(app.packageName, 0);
+        Toast.makeText(requireContext(), "Cloning " + app.appName + "...", Toast.LENGTH_SHORT).show();
 
-        boolean isInstalled = BlackBoxCore.get().isInstalled(app.packageName, 0);
-        if (isInstalled) {
-            Toast.makeText(requireContext(), "Cloned: " + app.appName, Toast.LENGTH_SHORT).show();
-            refreshClonedApps();
-        } else {
-            Toast.makeText(requireContext(), "Failed to clone " + app.appName, Toast.LENGTH_SHORT).show();
-        }
+        new Thread(() -> {
+            try {
+                BlackBoxCore.get().installPackageAsUser(app.packageName, 0);
+                boolean isInstalled = BlackBoxCore.get().isInstalled(app.packageName, 0);
+
+                uiHandler.post(() -> {
+                    if (binding == null) return;
+                    if (isInstalled) {
+                        Toast.makeText(requireContext(), "Cloned: " + app.appName, Toast.LENGTH_SHORT).show();
+                        refreshClonedApps();
+                    } else {
+                        Toast.makeText(requireContext(), "Failed to clone " + app.appName, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Clone failed", e);
+                uiHandler.post(() ->
+                    Toast.makeText(requireContext(), "Clone failed: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
+            }
+        }).start();
     }
 
     private void showAppOptionsDialog(Utility.AppInfo app) {
@@ -261,12 +296,30 @@ public class HomeFragment extends BaseFragment {
                         startInject(app);
                         break;
                     case 1:
-                        BlackBoxCore.get().launchApk(app.packageName, 0);
+                        new Thread(() -> {
+                            try {
+                                BlackBoxCore.get().launchApk(app.packageName, 0);
+                            } catch (Exception e) {
+                                uiHandler.post(() ->
+                                    Toast.makeText(requireContext(), "Launch failed", Toast.LENGTH_SHORT).show()
+                                );
+                            }
+                        }).start();
                         break;
                     case 2:
-                        BlackBoxCore.get().uninstallPackage(app.packageName);
-                        Toast.makeText(requireContext(), "Uninstalled: " + app.appName, Toast.LENGTH_SHORT).show();
-                        refreshClonedApps();
+                        new Thread(() -> {
+                            try {
+                                BlackBoxCore.get().uninstallPackage(app.packageName);
+                                uiHandler.post(() -> {
+                                    Toast.makeText(requireContext(), "Uninstalled: " + app.appName, Toast.LENGTH_SHORT).show();
+                                    refreshClonedApps();
+                                });
+                            } catch (Exception e) {
+                                uiHandler.post(() ->
+                                    Toast.makeText(requireContext(), "Uninstall failed", Toast.LENGTH_SHORT).show()
+                                );
+                            }
+                        }).start();
                         break;
                 }
             })
@@ -312,6 +365,7 @@ public class HomeFragment extends BaseFragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        uiHandler.removeCallbacksAndMessages(null);
         binding = null;
     }
 }

@@ -161,15 +161,15 @@ public class BlackBoxCore extends ClientConfiguration {
             ContentProviderDelegate.init();
         }
         if (!isServerProcess()) {
+            mServicesReady = true;
+            if (mOnServicesReady != null) {
+                mHandler.post(mOnServicesReady);
+            }
             new Thread(() -> {
                 try {
                     ServiceManager.initBlackManager();
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to initialize services", e);
-                }
-                mServicesReady = true;
-                if (mOnServicesReady != null) {
-                    mHandler.post(mOnServicesReady);
                 }
             }, "ServiceManagerInit").start();
         }

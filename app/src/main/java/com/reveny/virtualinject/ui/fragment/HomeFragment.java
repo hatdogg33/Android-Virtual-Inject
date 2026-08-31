@@ -142,15 +142,23 @@ public class HomeFragment extends BaseFragment {
         binding.nestedScrollView.getBorderViewDelegate().setBorderVisibilityChangedListener((top, oldTop, bottom, oldBottom) -> binding.appBar.setLifted(!top));
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
 
-        setButtonsEnabled(false);
+        setInstallButtonsEnabled(false);
         binding.statusText.setVisibility(View.VISIBLE);
         binding.statusText.setText("Initializing services...");
 
         BlackBoxCore.get().setOnServicesReadyListener(() -> {
             if (binding == null) return;
             binding.statusText.setVisibility(View.GONE);
-            setButtonsEnabled(true);
+            setInstallButtonsEnabled(true);
         });
+
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (binding == null) return;
+            if (!BlackBoxCore.get().isServicesReady()) {
+                binding.statusText.setText("Services taking long, buttons enabled anyway");
+                setInstallButtonsEnabled(true);
+            }
+        }, 5000);
 
         binding.fabAddApp.setOnClickListener(v -> showAppPicker());
 
@@ -196,38 +204,42 @@ public class HomeFragment extends BaseFragment {
         return binding.getRoot();
     }
 
-    private void setButtonsEnabled(boolean enabled) {
+    private void setInstallButtonsEnabled(boolean enabled) {
         binding.installButton.setEnabled(enabled);
         binding.launchButton.setEnabled(enabled);
-        binding.fabAddApp.setEnabled(enabled);
     }
 
     private void showAppPicker() {
-        if (getContext() == null) return;
+        if (!isAdded() || getContext() == null) return;
 
-        List<Utility.AppInfo> apps = Utility.getInstalledApps(requireContext());
-        if (apps.isEmpty()) {
-            Toast.makeText(requireContext(), "No apps found", Toast.LENGTH_SHORT).show();
-            return;
+        try {
+            List<Utility.AppInfo> apps = Utility.getInstalledApps(requireContext());
+            if (apps.isEmpty()) {
+                Toast.makeText(requireContext(), "No apps found", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String[] appNames = new String[apps.size()];
+            String[] packageNames = new String[apps.size()];
+            for (int i = 0; i < apps.size(); i++) {
+                appNames[i] = apps.get(i).appName + "\n" + apps.get(i).packageName;
+                packageNames[i] = apps.get(i).packageName;
+            }
+
+            new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Select App to Clone")
+                .setItems(appNames, (dialog, which) -> {
+                    selectedApp = packageNames[which];
+                    selectedAppName = apps.get(which).appName;
+                    binding.selectedAppLabel.setText(selectedAppName + "\n" + packageNames[which]);
+                    Log.i(TAG, "Selected: " + selectedApp);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to show app picker", e);
+            Toast.makeText(requireContext(), "Failed to load apps: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
-
-        String[] appNames = new String[apps.size()];
-        String[] packageNames = new String[apps.size()];
-        for (int i = 0; i < apps.size(); i++) {
-            appNames[i] = apps.get(i).appName + "\n" + apps.get(i).packageName;
-            packageNames[i] = apps.get(i).packageName;
-        }
-
-        new MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Select App to Clone")
-            .setItems(appNames, (dialog, which) -> {
-                selectedApp = packageNames[which];
-                selectedAppName = apps.get(which).appName;
-                binding.selectedAppLabel.setText(selectedAppName + "\n" + packageNames[which]);
-                Log.i(TAG, "Selected: " + selectedApp);
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
     }
 
     public static class AboutDialog extends DialogFragment {

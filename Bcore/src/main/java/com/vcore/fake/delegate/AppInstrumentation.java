@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Canvas;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.PersistableBundle;
 import android.util.Log;
 
@@ -114,7 +115,8 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
 
         ActivityInfo targetInfo = null;
         try {
-            targetInfo = HCallbackProxy.getTargetActivityInfo(activity.getActivityToken());
+            IBinder token = black.android.app.Activity.mToken.get(activity);
+            targetInfo = HCallbackProxy.getTargetActivityInfo(token);
         } catch (Throwable ignored) { }
 
         ActivityInfo infoToUse = (targetInfo != null) ? targetInfo : proxyInfo;

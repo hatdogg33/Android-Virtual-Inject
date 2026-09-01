@@ -160,8 +160,8 @@ public class PairIpHook {
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                     String name = (String) param.args[0];
                     if ("package".equals(name)) {
-                        Log.d(TAG, "ServiceManager.getService(package) called! Calling class: " + param.getCallersClassName());
-                        System.out.println("PairIpHook: ServiceManager.getService(package) CALLED from: " + param.getCallersClassName());
+                        Log.d(TAG, "ServiceManager.getService(package) called!");
+                        System.out.println("PairIpHook: ServiceManager.getService(package) CALLED");
                         try {
                             Object ourProxy = black.android.app.ActivityThread.sPackageManager.get();
                             if (ourProxy != null) {

@@ -122,9 +122,8 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
             activity.getTheme().applyStyle(themeRes, true);
         }
 
-        if (targetInfo != null && targetInfo.screenOrientation != ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) {
-            ActivityManagerCompat.setActivityOrientation(activity, targetInfo.screenOrientation);
-        }
+        int orientation = (targetInfo != null) ? targetInfo.screenOrientation : info.screenOrientation;
+        ActivityManagerCompat.setActivityOrientation(activity, orientation);
     }
 
     @Override

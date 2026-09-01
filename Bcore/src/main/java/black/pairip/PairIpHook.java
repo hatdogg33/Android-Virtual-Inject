@@ -72,8 +72,29 @@ public class PairIpHook {
     }
 
     private static void hookServiceManager(ClassLoader cl) {
+        Class<?> smClass = null;
+
         try {
-            Class<?> smClass = Class.forName("android.os.ServiceManager", false, cl);
+            smClass = Class.forName("android.os.ServiceManager");
+            Log.i(TAG, "Found ServiceManager via boot classloader");
+        } catch (Throwable e1) {
+            try {
+                smClass = Class.forName("android.os.ServiceManager", false, cl);
+                Log.i(TAG, "Found ServiceManager via app classloader");
+            } catch (Throwable e2) {
+                try {
+                    smClass = Class.forName("com.android.server.ServiceManager", false, null);
+                    Log.i(TAG, "Found ServiceManager via com.android.server path");
+                } catch (Throwable e3) {
+                    Log.w(TAG, "hookServiceManager failed: ServiceManager class not found via any classloader");
+                    return;
+                }
+            }
+        }
+
+        final Class<?> serviceManagerClass = smClass;
+
+        try {
             XposedBridge.hookAllMethods(smClass, "getService", new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
@@ -81,13 +102,13 @@ public class PairIpHook {
                     if ("package".equals(name)) {
                         try {
                             Object ourProxy = black.android.app.ActivityThread.sPackageManager.get();
-                            if (ourProxy instanceof IBinder) {
+                            if (ourProxy != null) {
                                 param.setResult(ourProxy);
                                 Log.d(TAG, "ServiceManager.getService(package) -> intercepted, returning our proxy");
                                 return;
                             }
 
-                            java.lang.reflect.Field sCacheField = smClass.getDeclaredField("sCache");
+                            java.lang.reflect.Field sCacheField = serviceManagerClass.getDeclaredField("sCache");
                             sCacheField.setAccessible(true);
                             @SuppressWarnings("unchecked")
                             Map<String, IBinder> cache = (Map<String, IBinder>) sCacheField.get(null);
@@ -106,7 +127,7 @@ public class PairIpHook {
             });
             Log.i(TAG, "ServiceManager.getService hook installed");
         } catch (Throwable e) {
-            Log.w(TAG, "hookServiceManager failed: " + e.getMessage());
+            Log.w(TAG, "hookServiceManager hookAllMethods failed: " + e.getMessage());
         }
     }
 

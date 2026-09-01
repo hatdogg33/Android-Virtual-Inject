@@ -68,31 +68,46 @@ public class PairIpHook {
 
         hookGoogleSignatureVerifier(cl);
         hookRunningProcesses();
+        System.out.println("PairIpHook: >>>>>> hookServiceManager about to be called <<<<<<");
         hookServiceManager(cl);
+        System.out.println("PairIpHook: >>>>>> hookServiceManager returned <<<<<<");
     }
 
     private static void hookServiceManager(ClassLoader cl) {
+        try {
+            System.out.println("PairIpHook: hookServiceManager START, cl=" + cl);
+            Log.i(TAG, "hookServiceManager START, cl=" + cl);
+        } catch (Throwable t) { System.err.println("PairIpHook: hookServiceManager even println failed: " + t); }
+
         Class<?> smClass = null;
 
         try {
             smClass = Class.forName("android.os.ServiceManager");
             Log.i(TAG, "Found ServiceManager via boot classloader");
+            System.out.println("PairIpHook: Found ServiceManager via boot classloader: " + smClass);
         } catch (Throwable e1) {
+            Log.w(TAG, "ServiceManager not found via boot: " + e1.getMessage());
             try {
                 smClass = Class.forName("android.os.ServiceManager", false, cl);
                 Log.i(TAG, "Found ServiceManager via app classloader");
+                System.out.println("PairIpHook: Found ServiceManager via app classloader: " + smClass);
             } catch (Throwable e2) {
+                Log.w(TAG, "ServiceManager not found via app cl: " + e2.getMessage());
                 try {
                     smClass = Class.forName("com.android.server.ServiceManager", false, null);
                     Log.i(TAG, "Found ServiceManager via com.android.server path");
+                    System.out.println("PairIpHook: Found ServiceManager via server path: " + smClass);
                 } catch (Throwable e3) {
                     Log.w(TAG, "hookServiceManager failed: ServiceManager class not found via any classloader");
+                    System.out.println("PairIpHook: hookServiceManager FAILED: class not found via any classloader");
                     return;
                 }
             }
         }
 
         final Class<?> serviceManagerClass = smClass;
+        Log.i(TAG, "hookServiceManager: about to hookAllMethods on " + smClass.getName());
+        System.out.println("PairIpHook: hookServiceManager: about to hookAllMethods on " + smClass.getName());
 
         try {
             XposedBridge.hookAllMethods(smClass, "getService", new XC_MethodHook() {
@@ -100,11 +115,14 @@ public class PairIpHook {
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                     String name = (String) param.args[0];
                     if ("package".equals(name)) {
+                        Log.d(TAG, "ServiceManager.getService(package) called! Calling class: " + param.getCallersClassName());
+                        System.out.println("PairIpHook: ServiceManager.getService(package) CALLED from: " + param.getCallersClassName());
                         try {
                             Object ourProxy = black.android.app.ActivityThread.sPackageManager.get();
                             if (ourProxy != null) {
                                 param.setResult(ourProxy);
                                 Log.d(TAG, "ServiceManager.getService(package) -> intercepted, returning our proxy");
+                                System.out.println("PairIpHook: ServiceManager.getService(package) -> INTERCEPTED");
                                 return;
                             }
 
@@ -126,8 +144,10 @@ public class PairIpHook {
                 }
             });
             Log.i(TAG, "ServiceManager.getService hook installed");
+            System.out.println("PairIpHook: ServiceManager.getService hook INSTALLED");
         } catch (Throwable e) {
             Log.w(TAG, "hookServiceManager hookAllMethods failed: " + e.getMessage());
+            System.out.println("PairIpHook: hookServiceManager hookAllMethods FAILED: " + e.getMessage());
         }
     }
 

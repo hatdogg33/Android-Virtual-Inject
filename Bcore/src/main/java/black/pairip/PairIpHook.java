@@ -14,7 +14,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -35,165 +34,6 @@ public class PairIpHook {
     public static void hookGmsOnly(ClassLoader cl) {
         if (cl == null) return;
         hookGooglePlayServices(cl);
-
-        try {
-            Class<?> gmsCoreUtil = XposedHelpers.findClass("com.google.android.gms.common.GoogleApiAvailability", cl);
-            XposedBridge.hookAllMethods(gmsCoreUtil, "isGooglePlayServicesAvailable", new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    Log.d(TAG, "GoogleApiAvailability.isGooglePlayServicesAvailable -> SUCCESS");
-                    param.setResult(0);
-                }
-            });
-            Log.i(TAG, "GoogleApiAvailability hook installed");
-        } catch (Throwable e) {
-            Log.w(TAG, "GoogleApiAvailability class not found: " + e.getMessage());
-        }
-
-        try {
-            Class<?> googleApiClient = XposedHelpers.findClass("com.google.android.gms.common.api.GoogleApiClient", cl);
-            XposedBridge.hookAllMethods(googleApiClient, "blockingConnect", new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    Log.d(TAG, "GoogleApiClient.blockingConnect intercepted, returning SUCCESS");
-                    Class<?> resultClass = XposedHelpers.findClass("com.google.android.gms.common.ConnectionResult", cl);
-                    java.lang.reflect.Constructor<?> ctor = resultClass.getConstructor(int.class);
-                    param.setResult(ctor.newInstance(0));
-                }
-            });
-            Log.i(TAG, "GoogleApiClient.blockingConnect hook installed");
-        } catch (Throwable e) {
-            Log.w(TAG, "GoogleApiClient class not found: " + e.getMessage());
-        }
-
-        hookGoogleSignatureVerifier(cl);
-        hookRunningProcesses();
-        hookServiceManager(cl);
-        hookGmsSecurityException(cl);
-    }
-
-    private static void hookGmsSecurityException(ClassLoader cl) {
-        try {
-            Class<?> zzaaClass = XposedHelpers.findClass("com.google.android.gms.common.internal.zzaa", cl);
-            XposedBridge.hookAllMethods(zzaaClass, "getService", new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    if (param.hasThrowable()) {
-                        Throwable t = param.getThrowable();
-                        if (t instanceof java.lang.SecurityException) {
-                            String msg = t.getMessage();
-                            if (msg != null && msg.contains("Unknown calling package")) {
-                                Log.w(TAG, "zzaa.getService SecurityException caught: " + msg);
-                                param.setThrowable(null);
-                            }
-                        }
-                    }
-                }
-            });
-            Log.i(TAG, "zzaa.getService SecurityException hook installed");
-        } catch (Throwable e) {
-            Log.w(TAG, "zzaa.getService hook failed: " + e.getMessage());
-        }
-
-        try {
-            Class<?> baseGmsClientClass = XposedHelpers.findClass("com.google.android.gms.common.internal.BaseGmsClient", cl);
-            XposedBridge.hookAllMethods(baseGmsClientClass, "getRemoteService", new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    if (param.hasThrowable()) {
-                        Throwable t = param.getThrowable();
-                        if (t instanceof java.lang.SecurityException) {
-                            String msg = t.getMessage();
-                            if (msg != null && msg.contains("Unknown calling package")) {
-                                Log.w(TAG, "BaseGmsClient.getRemoteService SecurityException caught: " + msg);
-                                param.setThrowable(null);
-                            }
-                        }
-                    }
-                }
-            });
-            Log.i(TAG, "BaseGmsClient.getRemoteService SecurityException hook installed");
-        } catch (Throwable e) {
-            Log.w(TAG, "BaseGmsClient.getRemoteService hook failed: " + e.getMessage());
-        }
-    }
-
-    private static void hookServiceManager(ClassLoader cl) {
-        try {
-            System.out.println("PairIpHook: hookServiceManager START, cl=" + cl);
-            Log.i(TAG, "hookServiceManager START, cl=" + cl);
-        } catch (Throwable t) { System.err.println("PairIpHook: hookServiceManager even println failed: " + t); }
-
-        Class<?> smClass = null;
-
-        try {
-            smClass = Class.forName("android.os.ServiceManager");
-            Log.i(TAG, "Found ServiceManager via boot classloader");
-            System.out.println("PairIpHook: Found ServiceManager via boot classloader: " + smClass);
-        } catch (Throwable e1) {
-            Log.w(TAG, "ServiceManager not found via boot: " + e1.getMessage());
-            try {
-                smClass = Class.forName("android.os.ServiceManager", false, cl);
-                Log.i(TAG, "Found ServiceManager via app classloader");
-                System.out.println("PairIpHook: Found ServiceManager via app classloader: " + smClass);
-            } catch (Throwable e2) {
-                Log.w(TAG, "ServiceManager not found via app cl: " + e2.getMessage());
-                try {
-                    smClass = Class.forName("com.android.server.ServiceManager", false, null);
-                    Log.i(TAG, "Found ServiceManager via com.android.server path");
-                    System.out.println("PairIpHook: Found ServiceManager via server path: " + smClass);
-                } catch (Throwable e3) {
-                    Log.w(TAG, "hookServiceManager failed: ServiceManager class not found via any classloader");
-                    System.out.println("PairIpHook: hookServiceManager FAILED: class not found via any classloader");
-                    return;
-                }
-            }
-        }
-
-        final Class<?> serviceManagerClass = smClass;
-        Log.i(TAG, "hookServiceManager: about to hookAllMethods on " + smClass.getName());
-        System.out.println("PairIpHook: hookServiceManager: about to hookAllMethods on " + smClass.getName());
-
-        try {
-            XposedBridge.hookAllMethods(smClass, "getService", new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    String name = (String) param.args[0];
-                    if ("package".equals(name)) {
-                        Log.d(TAG, "ServiceManager.getService(package) called!");
-                        System.out.println("PairIpHook: ServiceManager.getService(package) CALLED");
-                        try {
-                            Object ourProxy = black.android.app.ActivityThread.sPackageManager.get();
-                            if (ourProxy != null) {
-                                param.setResult(ourProxy);
-                                Log.d(TAG, "ServiceManager.getService(package) -> intercepted, returning our proxy");
-                                System.out.println("PairIpHook: ServiceManager.getService(package) -> INTERCEPTED");
-                                return;
-                            }
-
-                            java.lang.reflect.Field sCacheField = serviceManagerClass.getDeclaredField("sCache");
-                            sCacheField.setAccessible(true);
-                            @SuppressWarnings("unchecked")
-                            Map<String, IBinder> cache = (Map<String, IBinder>) sCacheField.get(null);
-                            if (cache != null) {
-                                IBinder cached = cache.get("package");
-                                if (cached != null) {
-                                    param.setResult(cached);
-                                    Log.d(TAG, "ServiceManager.getService(package) -> returned cached: " + cached.getClass().getName());
-                                }
-                            }
-                        } catch (Throwable e) {
-                            Log.w(TAG, "Could not intercept getService(package): " + e.getMessage());
-                        }
-                    }
-                }
-            });
-            Log.i(TAG, "ServiceManager.getService hook installed");
-            System.out.println("PairIpHook: ServiceManager.getService hook INSTALLED");
-        } catch (Throwable e) {
-            Log.w(TAG, "hookServiceManager hookAllMethods failed: " + e.getMessage());
-            System.out.println("PairIpHook: hookServiceManager hookAllMethods FAILED: " + e.getMessage());
-        }
     }
 
     private static void hookPairIpLicense(ClassLoader cl) {
@@ -324,6 +164,7 @@ public class PairIpHook {
         hookNativeLoad(cl);
         hookGoogleApiClient(cl);
         hookRunningProcesses();
+        hookPackageManager(cl);
     }
 
     private static void hookDebugCheck() {
@@ -489,8 +330,6 @@ public class PairIpHook {
         } catch (Throwable e) {
             Log.w(TAG, "GoogleApiClient class not found: " + e.getMessage());
         }
-
-        hookGoogleSignatureVerifier(cl);
     }
 
     private static void hookRunningProcesses() {
@@ -521,24 +360,29 @@ public class PairIpHook {
         }
     }
 
-    private static void hookGoogleSignatureVerifier(ClassLoader cl) {
+    private static void hookPackageManager(ClassLoader cl) {
         try {
-            Class<?> verifierClass = XposedHelpers.findClass("com.google.android.gms.common.GoogleSignatureVerifier", cl);
-            for (java.lang.reflect.Method m : verifierClass.getDeclaredMethods()) {
-                String name = m.getName();
-                if (name.startsWith("verify") || name.equals("isGooglePlayServicesSigned")) {
-                    XposedBridge.hookMethod(m, new XC_MethodHook() {
-                        @Override
-                        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                            Log.d(TAG, "GoogleSignatureVerifier." + m.getName() + " intercepted, returning true");
-                            param.setResult(true);
-                        }
-                    });
+            Class<?> pmClass = XposedHelpers.findClass("android.app.ApplicationPackageManager", cl);
+            XposedBridge.hookAllMethods(pmClass, "getPackageInfo", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    String pkg = (String) param.args[0];
+                    if ("com.android.vending".equals(pkg) || "com.google.android.gms".equals(pkg)) {
+                        Log.d(TAG, "getPackageInfo intercepted for: " + pkg + ", returning fake PackageInfo");
+                        android.content.pm.PackageInfo pi = new android.content.pm.PackageInfo();
+                        pi.packageName = pkg;
+                        pi.versionCode = 9999999;
+                        pi.versionName = "29.9.99";
+                        pi.applicationInfo = new android.content.pm.ApplicationInfo();
+                        pi.applicationInfo.packageName = pkg;
+                        pi.applicationInfo.flags = android.content.pm.ApplicationInfo.FLAG_SYSTEM;
+                        param.setResult(pi);
+                    }
                 }
-            }
-            Log.i(TAG, "GoogleSignatureVerifier hooks installed");
+            });
+            Log.i(TAG, "PackageManager.getPackageInfo hook installed");
         } catch (Throwable e) {
-            Log.w(TAG, "GoogleSignatureVerifier class not found: " + e.getMessage());
+            Log.w(TAG, "hookPackageManager failed: " + e.getMessage());
         }
     }
 }

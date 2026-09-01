@@ -34,6 +34,39 @@ public class PairIpHook {
     public static void hookGmsOnly(ClassLoader cl) {
         if (cl == null) return;
         hookGooglePlayServices(cl);
+
+        try {
+            Class<?> gmsCoreUtil = XposedHelpers.findClass("com.google.android.gms.common.GoogleApiAvailability", cl);
+            XposedBridge.hookAllMethods(gmsCoreUtil, "isGooglePlayServicesAvailable", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    Log.d(TAG, "GoogleApiAvailability.isGooglePlayServicesAvailable -> SUCCESS");
+                    param.setResult(0);
+                }
+            });
+            Log.i(TAG, "GoogleApiAvailability hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "GoogleApiAvailability class not found: " + e.getMessage());
+        }
+
+        try {
+            Class<?> googleApiClient = XposedHelpers.findClass("com.google.android.gms.common.api.GoogleApiClient", cl);
+            XposedBridge.hookAllMethods(googleApiClient, "blockingConnect", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    Log.d(TAG, "GoogleApiClient.blockingConnect intercepted, returning SUCCESS");
+                    Class<?> resultClass = XposedHelpers.findClass("com.google.android.gms.common.ConnectionResult", cl);
+                    java.lang.reflect.Constructor<?> ctor = resultClass.getConstructor(int.class);
+                    param.setResult(ctor.newInstance(0));
+                }
+            });
+            Log.i(TAG, "GoogleApiClient.blockingConnect hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "GoogleApiClient class not found: " + e.getMessage());
+        }
+
+        hookGoogleSignatureVerifier(cl);
+        hookRunningProcesses();
     }
 
     private static void hookPairIpLicense(ClassLoader cl) {
@@ -164,7 +197,6 @@ public class PairIpHook {
         hookNativeLoad(cl);
         hookGoogleApiClient(cl);
         hookRunningProcesses();
-        hookPackageManager(cl);
     }
 
     private static void hookDebugCheck() {
@@ -330,6 +362,8 @@ public class PairIpHook {
         } catch (Throwable e) {
             Log.w(TAG, "GoogleApiClient class not found: " + e.getMessage());
         }
+
+        hookGoogleSignatureVerifier(cl);
     }
 
     private static void hookRunningProcesses() {
@@ -360,29 +394,24 @@ public class PairIpHook {
         }
     }
 
-    private static void hookPackageManager(ClassLoader cl) {
+    private static void hookGoogleSignatureVerifier(ClassLoader cl) {
         try {
-            Class<?> pmClass = XposedHelpers.findClass("android.app.ApplicationPackageManager", cl);
-            XposedBridge.hookAllMethods(pmClass, "getPackageInfo", new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    String pkg = (String) param.args[0];
-                    if ("com.android.vending".equals(pkg) || "com.google.android.gms".equals(pkg)) {
-                        Log.d(TAG, "getPackageInfo intercepted for: " + pkg + ", returning fake PackageInfo");
-                        android.content.pm.PackageInfo pi = new android.content.pm.PackageInfo();
-                        pi.packageName = pkg;
-                        pi.versionCode = 9999999;
-                        pi.versionName = "29.9.99";
-                        pi.applicationInfo = new android.content.pm.ApplicationInfo();
-                        pi.applicationInfo.packageName = pkg;
-                        pi.applicationInfo.flags = android.content.pm.ApplicationInfo.FLAG_SYSTEM;
-                        param.setResult(pi);
-                    }
+            Class<?> verifierClass = XposedHelpers.findClass("com.google.android.gms.common.GoogleSignatureVerifier", cl);
+            for (java.lang.reflect.Method m : verifierClass.getDeclaredMethods()) {
+                String name = m.getName();
+                if (name.startsWith("verify") || name.equals("isGooglePlayServicesSigned")) {
+                    XposedBridge.hookMethod(m, new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                            Log.d(TAG, "GoogleSignatureVerifier." + m.getName() + " intercepted, returning true");
+                            param.setResult(true);
+                        }
+                    });
                 }
-            });
-            Log.i(TAG, "PackageManager.getPackageInfo hook installed");
+            }
+            Log.i(TAG, "GoogleSignatureVerifier hooks installed");
         } catch (Throwable e) {
-            Log.w(TAG, "hookPackageManager failed: " + e.getMessage());
+            Log.w(TAG, "GoogleSignatureVerifier class not found: " + e.getMessage());
         }
     }
 }

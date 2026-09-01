@@ -171,7 +171,7 @@ public class IPackageManagerProxy extends BinderInvocationStub {
             if (AppSystemEnv.isOpenPackage(packageName)) {
                 return method.invoke(who, args);
             }
-            return null;
+            return method.invoke(who, args);
         }
     }
 
@@ -362,7 +362,7 @@ public class IPackageManagerProxy extends BinderInvocationStub {
             if (AppSystemEnv.isOpenPackage(packageName)) {
                 return method.invoke(who, args);
             }
-            return null;
+            return method.invoke(who, args);
         }
     }
 

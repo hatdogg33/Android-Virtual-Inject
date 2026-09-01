@@ -41,6 +41,10 @@ public class HCallbackProxy implements IInjectHook, Handler.Callback {
         return sTargetActivityInfos.remove(token);
     }
 
+    public static ActivityInfo peekTargetActivityInfo(IBinder token) {
+        return sTargetActivityInfos.get(token);
+    }
+
     private Handler.Callback getHCallback() {
         return black.android.os.Handler.mCallback.get(getH());
     }

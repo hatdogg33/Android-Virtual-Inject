@@ -1,7 +1,11 @@
 package black.pairip;
 
+import android.app.Activity;
+import android.content.pm.ActivityInfo;
+import android.os.IBinder;
 import android.util.Log;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -16,6 +20,7 @@ public class PairIpHook {
 
         hookPairIpLicense(cl);
         hookGooglePlayServices(cl);
+        hookOrientation(cl);
     }
 
     private static void hookPairIpLicense(ClassLoader cl) {
@@ -93,6 +98,48 @@ public class PairIpHook {
             Log.i(TAG, "GooglePlayServicesUtil hook installed (hookAllMethods)");
         } catch (Throwable e) {
             Log.w(TAG, "GooglePlayServicesUtil class not found: " + e.getMessage());
+        }
+    }
+
+    private static void hookOrientation(ClassLoader cl) {
+        try {
+            Field tokenField = Activity.class.getDeclaredField("mToken");
+            tokenField.setAccessible(true);
+
+            XposedHelpers.findAndHookMethod(Activity.class, "onResume", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    Activity activity = (Activity) param.thisObject;
+                    try {
+                        IBinder token = (IBinder) tokenField.get(activity);
+                        if (token == null) return;
+
+                        ActivityInfo targetInfo = com.vcore.fake.service.HCallbackProxy.peekTargetActivityInfo(token);
+                        if (targetInfo == null) return;
+
+                        int orientation = targetInfo.screenOrientation;
+                        if (orientation == ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                || orientation == ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR) {
+                            return;
+                        }
+
+                        if (orientation == ActivityInfo.SCREEN_ORIENTATION_LOCKED) {
+                            orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+                        }
+
+                        int current = activity.getRequestedOrientation();
+                        if (current != orientation) {
+                            Log.d(TAG, "Setting orientation " + orientation + " for " + targetInfo.name);
+                            activity.setRequestedOrientation(orientation);
+                        }
+                    } catch (Throwable e) {
+                        Log.w(TAG, "hookOrientation error: " + e.getMessage());
+                    }
+                }
+            });
+            Log.i(TAG, "Activity.onResume orientation hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "hookOrientation failed: " + e.getMessage());
         }
     }
 }

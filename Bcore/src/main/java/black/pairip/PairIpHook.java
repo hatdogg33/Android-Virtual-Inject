@@ -68,9 +68,54 @@ public class PairIpHook {
 
         hookGoogleSignatureVerifier(cl);
         hookRunningProcesses();
-        System.out.println("PairIpHook: >>>>>> hookServiceManager about to be called <<<<<<");
         hookServiceManager(cl);
-        System.out.println("PairIpHook: >>>>>> hookServiceManager returned <<<<<<");
+        hookGmsSecurityException(cl);
+    }
+
+    private static void hookGmsSecurityException(ClassLoader cl) {
+        try {
+            Class<?> zzaaClass = XposedHelpers.findClass("com.google.android.gms.common.internal.zzaa", cl);
+            XposedBridge.hookAllMethods(zzaaClass, "getService", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    if (param.hasThrowable()) {
+                        Throwable t = param.getThrowable();
+                        if (t instanceof java.lang.SecurityException) {
+                            String msg = t.getMessage();
+                            if (msg != null && msg.contains("Unknown calling package")) {
+                                Log.w(TAG, "zzaa.getService SecurityException caught: " + msg);
+                                param.setThrowable(null);
+                            }
+                        }
+                    }
+                }
+            });
+            Log.i(TAG, "zzaa.getService SecurityException hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "zzaa.getService hook failed: " + e.getMessage());
+        }
+
+        try {
+            Class<?> baseGmsClientClass = XposedHelpers.findClass("com.google.android.gms.common.internal.BaseGmsClient", cl);
+            XposedBridge.hookAllMethods(baseGmsClientClass, "getRemoteService", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    if (param.hasThrowable()) {
+                        Throwable t = param.getThrowable();
+                        if (t instanceof java.lang.SecurityException) {
+                            String msg = t.getMessage();
+                            if (msg != null && msg.contains("Unknown calling package")) {
+                                Log.w(TAG, "BaseGmsClient.getRemoteService SecurityException caught: " + msg);
+                                param.setThrowable(null);
+                            }
+                        }
+                    }
+                }
+            });
+            Log.i(TAG, "BaseGmsClient.getRemoteService SecurityException hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "BaseGmsClient.getRemoteService hook failed: " + e.getMessage());
+        }
     }
 
     private static void hookServiceManager(ClassLoader cl) {

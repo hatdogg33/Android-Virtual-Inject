@@ -116,18 +116,29 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
         ActivityInfo targetInfo = null;
         try {
             IBinder token = black.android.app.Activity.mToken.get(activity);
+            Log.d(TAG, "Activity token: " + token);
             targetInfo = HCallbackProxy.getTargetActivityInfo(token);
-        } catch (Throwable ignored) { }
+            Log.d(TAG, "targetInfo from map: " + targetInfo);
+        } catch (Throwable e) {
+            Log.w(TAG, "token lookup failed", e);
+        }
 
         ActivityInfo infoToUse = (targetInfo != null) ? targetInfo : proxyInfo;
 
-        int themeRes = (infoToUse.theme != 0) ? infoToUse.theme : proxyInfo.theme;
+        Log.d(TAG, "proxyInfo.orientation=" + (proxyInfo != null ? proxyInfo.screenOrientation : "null")
+                + " targetInfo.orientation=" + (targetInfo != null ? targetInfo.screenOrientation : "null")
+                + " final.orientation=" + (infoToUse != null ? infoToUse.screenOrientation : "null"));
+
+        int themeRes = (infoToUse.theme != 0) ? infoToUse.theme : (proxyInfo != null ? proxyInfo.theme : 0);
         if (themeRes != 0) {
             activity.getTheme().applyStyle(themeRes, true);
         }
 
         if (infoToUse.screenOrientation != ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) {
+            Log.d(TAG, "Setting orientation to: " + infoToUse.screenOrientation);
             ActivityManagerCompat.setActivityOrientation(activity, infoToUse.screenOrientation);
+        } else {
+            Log.d(TAG, "Orientation is UNSPECIFIED, not setting");
         }
     }
 

@@ -167,6 +167,7 @@ public class HCallbackProxy implements IInjectHook, Handler.Callback {
             BlackBoxCore.getBActivityManager().onActivityCreated(taskId, token, stubRecord.mActivityToken);
 
             sTargetActivityInfos.put(token, activityInfo);
+            Slog.d(TAG, "Stored target info for token=" + token + " orientation=" + activityInfo.screenOrientation + " activity=" + activityInfo.name);
 
             if (Build.VERSION.SDK_INT == Build.VERSION_CODES.S || (Build.VERSION.SDK_INT == Build.VERSION_CODES.R && Build.VERSION.PREVIEW_SDK_INT == 1)) {
                 Object record = ActivityThread.getLaunchingActivity.call(BlackBoxCore.mainThread(), token);

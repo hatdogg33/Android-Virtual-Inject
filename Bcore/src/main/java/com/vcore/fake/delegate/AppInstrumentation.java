@@ -110,8 +110,8 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
         HookManager.get().checkEnv(IActivityClientProxy.class);
 
         ActivityInfo proxyInfo = black.android.app.Activity.mActivityInfo.get(activity);
-        ContextCompat.fix(activity);
-        ActivityCompat.fix(activity);
+        try { ContextCompat.fix(activity); } catch (Throwable ignored) { }
+        try { ActivityCompat.fix(activity); } catch (Throwable ignored) { }
 
         ActivityInfo targetInfo = null;
         try {

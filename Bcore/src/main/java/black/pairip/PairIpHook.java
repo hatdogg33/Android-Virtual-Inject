@@ -67,6 +67,46 @@ public class PairIpHook {
 
         hookGoogleSignatureVerifier(cl);
         hookRunningProcesses();
+        hookServiceManager(cl);
+    }
+
+    private static void hookServiceManager(ClassLoader cl) {
+        try {
+            Class<?> smClass = Class.forName("android.os.ServiceManager", false, cl);
+            XposedBridge.hookAllMethods(smClass, "getService", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    String name = (String) param.args[0];
+                    if ("package".equals(name)) {
+                        try {
+                            Object ourProxy = black.android.app.ActivityThread.sPackageManager.get();
+                            if (ourProxy instanceof IBinder) {
+                                param.setResult(ourProxy);
+                                Log.d(TAG, "ServiceManager.getService(package) -> intercepted, returning our proxy");
+                                return;
+                            }
+
+                            java.lang.reflect.Field sCacheField = smClass.getDeclaredField("sCache");
+                            sCacheField.setAccessible(true);
+                            @SuppressWarnings("unchecked")
+                            Map<String, IBinder> cache = (Map<String, IBinder>) sCacheField.get(null);
+                            if (cache != null) {
+                                IBinder cached = cache.get("package");
+                                if (cached != null) {
+                                    param.setResult(cached);
+                                    Log.d(TAG, "ServiceManager.getService(package) -> returned cached: " + cached.getClass().getName());
+                                }
+                            }
+                        } catch (Throwable e) {
+                            Log.w(TAG, "Could not intercept getService(package): " + e.getMessage());
+                        }
+                    }
+                }
+            });
+            Log.i(TAG, "ServiceManager.getService hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "hookServiceManager failed: " + e.getMessage());
+        }
     }
 
     private static void hookPairIpLicense(ClassLoader cl) {

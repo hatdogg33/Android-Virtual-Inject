@@ -108,22 +108,25 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
         checkHCallback();
         HookManager.get().checkEnv(IActivityClientProxy.class);
 
-        ActivityInfo info = black.android.app.Activity.mActivityInfo.get(activity);
+        ActivityInfo proxyInfo = black.android.app.Activity.mActivityInfo.get(activity);
         ContextCompat.fix(activity);
         ActivityCompat.fix(activity);
 
         ActivityInfo targetInfo = null;
         try {
-            targetInfo = activity.getIntent().getParcelableExtra("_B_|_activity_info_");
+            targetInfo = HCallbackProxy.getTargetActivityInfo(activity.getActivityToken());
         } catch (Throwable ignored) { }
 
-        int themeRes = (targetInfo != null && targetInfo.theme != 0) ? targetInfo.theme : info.theme;
+        ActivityInfo infoToUse = (targetInfo != null) ? targetInfo : proxyInfo;
+
+        int themeRes = (infoToUse.theme != 0) ? infoToUse.theme : proxyInfo.theme;
         if (themeRes != 0) {
             activity.getTheme().applyStyle(themeRes, true);
         }
 
-        int orientation = (targetInfo != null) ? targetInfo.screenOrientation : info.screenOrientation;
-        ActivityManagerCompat.setActivityOrientation(activity, orientation);
+        if (infoToUse.screenOrientation != ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) {
+            ActivityManagerCompat.setActivityOrientation(activity, infoToUse.screenOrientation);
+        }
     }
 
     @Override

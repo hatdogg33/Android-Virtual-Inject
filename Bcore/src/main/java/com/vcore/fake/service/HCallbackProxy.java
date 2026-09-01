@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import black.android.app.ActivityClient;
@@ -33,6 +34,12 @@ public class HCallbackProxy implements IInjectHook, Handler.Callback {
     public static final String TAG = "HCallbackProxy";
     private Handler.Callback mOtherCallback;
     private final AtomicBoolean mBeing = new AtomicBoolean(false);
+
+    private static final ConcurrentHashMap<IBinder, ActivityInfo> sTargetActivityInfos = new ConcurrentHashMap<>();
+
+    public static ActivityInfo getTargetActivityInfo(IBinder token) {
+        return sTargetActivityInfos.remove(token);
+    }
 
     private Handler.Callback getHCallback() {
         return black.android.os.Handler.mCallback.get(getH());
@@ -158,6 +165,8 @@ public class HCallbackProxy implements IInjectHook, Handler.Callback {
 
             int taskId = IActivityManager.getTaskForActivity.call(ActivityManagerNative.getDefault.call(), token, false);
             BlackBoxCore.getBActivityManager().onActivityCreated(taskId, token, stubRecord.mActivityToken);
+
+            sTargetActivityInfos.put(token, activityInfo);
 
             if (Build.VERSION.SDK_INT == Build.VERSION_CODES.S || (Build.VERSION.SDK_INT == Build.VERSION_CODES.R && Build.VERSION.PREVIEW_SDK_INT == 1)) {
                 Object record = ActivityThread.getLaunchingActivity.call(BlackBoxCore.mainThread(), token);

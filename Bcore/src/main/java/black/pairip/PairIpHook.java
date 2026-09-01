@@ -1,7 +1,9 @@
 package black.pairip;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.os.Debug;
 import android.os.IBinder;
 import android.util.Log;
@@ -10,6 +12,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -25,6 +29,11 @@ public class PairIpHook {
         hookGooglePlayServices(cl);
         hookOrientation(cl);
         hookRaspBypass(cl);
+    }
+
+    public static void hookGmsOnly(ClassLoader cl) {
+        if (cl == null) return;
+        hookGooglePlayServices(cl);
     }
 
     private static void hookPairIpLicense(ClassLoader cl) {
@@ -153,6 +162,9 @@ public class PairIpHook {
         hookFileExists(cl);
         hookMapsReading(cl);
         hookNativeLoad(cl);
+        hookGoogleApiClient(cl);
+        hookRunningProcesses();
+        hookPackageManager(cl);
     }
 
     private static void hookDebugCheck() {
@@ -285,6 +297,92 @@ public class PairIpHook {
             Log.i(TAG, "Runtime.loadLibrary hook installed");
         } catch (Throwable e) {
             Log.w(TAG, "hookNativeLoad failed: " + e.getMessage());
+        }
+    }
+
+    private static void hookGoogleApiClient(ClassLoader cl) {
+        try {
+            Class<?> gmsCoreUtil = XposedHelpers.findClass("com.google.android.gms.common.GoogleApiAvailability", cl);
+            XposedBridge.hookAllMethods(gmsCoreUtil, "isGooglePlayServicesAvailable", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    Log.d(TAG, "GoogleApiAvailability.isGooglePlayServicesAvailable -> SUCCESS");
+                    param.setResult(0);
+                }
+            });
+            Log.i(TAG, "GoogleApiAvailability hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "GoogleApiAvailability class not found: " + e.getMessage());
+        }
+
+        try {
+            Class<?> googleApiClient = XposedHelpers.findClass("com.google.android.gms.common.api.GoogleApiClient", cl);
+            XposedBridge.hookAllMethods(googleApiClient, "blockingConnect", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    Log.d(TAG, "GoogleApiClient.blockingConnect intercepted, returning SUCCESS");
+                    Class<?> resultClass = XposedHelpers.findClass("com.google.android.gms.common.ConnectionResult", cl);
+                    java.lang.reflect.Constructor<?> ctor = resultClass.getConstructor(int.class);
+                    param.setResult(ctor.newInstance(0));
+                }
+            });
+            Log.i(TAG, "GoogleApiClient.blockingConnect hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "GoogleApiClient class not found: " + e.getMessage());
+        }
+    }
+
+    private static void hookRunningProcesses() {
+        try {
+            XposedHelpers.findAndHookMethod(ActivityManager.class, "getRunningAppProcesses", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    List<ActivityManager.RunningAppProcessInfo> result =
+                            (List<ActivityManager.RunningAppProcessInfo>) param.getResult();
+                    if (result == null) return;
+                    for (ActivityManager.RunningAppProcessInfo proc : result) {
+                        if (proc.processName != null && proc.processName.contains("virtualinject")) {
+                            proc.processName = proc.processName.replace("virtualinject", "criticalops");
+                        }
+                        if (proc.pkgList != null) {
+                            for (int i = 0; i < proc.pkgList.length; i++) {
+                                if (proc.pkgList[i] != null && proc.pkgList[i].contains("virtualinject")) {
+                                    proc.pkgList[i] = proc.pkgList[i].replace("virtualinject", "criticalops");
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            Log.i(TAG, "getRunningAppProcesses hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "hookRunningProcesses failed: " + e.getMessage());
+        }
+    }
+
+    private static void hookPackageManager(ClassLoader cl) {
+        try {
+            Class<?> pmClass = XposedHelpers.findClass("android.app.ApplicationPackageManager", cl);
+            XposedBridge.hookAllMethods(pmClass, "getPackageInfo", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    String pkg = (String) param.args[0];
+                    if ("com.android.vending".equals(pkg) || "com.google.android.gms".equals(pkg)) {
+                        Log.d(TAG, "getPackageInfo intercepted for: " + pkg + ", returning fake PackageInfo");
+                        android.content.pm.PackageInfo pi = new android.content.pm.PackageInfo();
+                        pi.packageName = pkg;
+                        pi.versionCode = 9999999;
+                        pi.versionName = "29.9.99";
+                        pi.applicationInfo = new android.content.pm.ApplicationInfo();
+                        pi.applicationInfo.packageName = pkg;
+                        pi.applicationInfo.flags = android.content.pm.ApplicationInfo.FLAG_SYSTEM;
+                        param.setResult(pi);
+                    }
+                }
+            });
+            Log.i(TAG, "PackageManager.getPackageInfo hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "hookPackageManager failed: " + e.getMessage());
         }
     }
 }

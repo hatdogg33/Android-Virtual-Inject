@@ -496,4 +496,42 @@ public class IPackageManagerProxy extends BinderInvocationStub {
             return PackageManager.COMPONENT_ENABLED_STATE_DEFAULT;
         }
     }
+
+    @ProxyMethod("setComponentEnabledSetting")
+    public static class SetComponentEnabledSetting extends MethodHook {
+
+        @Override
+        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            Slog.d(TAG, "setComponentEnabledSetting intercepted, silently succeeding");
+            return null;
+        }
+    }
+
+    @ProxyMethod("getNameForUid")
+    public static class GetNameForUid extends MethodHook {
+
+        @Override
+        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            int uid = (Integer) args[0];
+            if (uid == BlackBoxCore.getHostUid()) {
+                String virtualPkg = BActivityThread.getAppProcessName();
+                Slog.d(TAG, "getNameForUid: host UID " + uid + " mapped to " + virtualPkg);
+                return new String[]{virtualPkg};
+            }
+            return method.invoke(who, args);
+        }
+    }
+
+    @ProxyMethod("checkUidPermission")
+    public static class CheckUidPermission extends MethodHook {
+
+        @Override
+        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
+            int uid = (Integer) args[1];
+            if (uid == BlackBoxCore.getHostUid()) {
+                args[1] = BActivityThread.getBUid();
+            }
+            return method.invoke(who, args);
+        }
+    }
 }

@@ -170,6 +170,12 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
             PairIpHook.hookIfPresent(cl);
         } catch (Throwable ignored) { }
         try {
+            ClassLoader hostCl = app.getClassLoader();
+            if (hostCl != cl) {
+                PairIpHook.hookGmsOnly(hostCl);
+            }
+        } catch (Throwable ignored) { }
+        try {
             if (com.vcore.BlackBoxCore.get().isHideXposed()) {
                 com.vcore.core.NativeCore.hideXposed();
             }

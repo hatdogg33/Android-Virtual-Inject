@@ -58,18 +58,6 @@ jobs:
       - name: Grant Execute Permission for gradlew
         run: chmod +x gradlew
 
-      - name: Generate Keystore for Signing
-        run: |
-          keytool -genkeypair -v \
-            -keystore app/release.keystore \
-            -alias release \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android \
-            -keypass android \
-            -dname "CN=CI, OU=CI, O=CI, L=CI, ST=CI, C=US"
-
       - name: Build Release APK
         env:
           KEYSTORE_PATH: release.keystore

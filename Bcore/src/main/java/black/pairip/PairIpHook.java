@@ -2,9 +2,12 @@ package black.pairip;
 
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
+import android.os.Debug;
 import android.os.IBinder;
 import android.util.Log;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
@@ -21,6 +24,7 @@ public class PairIpHook {
         hookPairIpLicense(cl);
         hookGooglePlayServices(cl);
         hookOrientation(cl);
+        hookRaspBypass(cl);
     }
 
     private static void hookPairIpLicense(ClassLoader cl) {
@@ -140,6 +144,147 @@ public class PairIpHook {
             Log.i(TAG, "Activity.onResume orientation hook installed");
         } catch (Throwable e) {
             Log.w(TAG, "hookOrientation failed: " + e.getMessage());
+        }
+    }
+
+    private static void hookRaspBypass(ClassLoader cl) {
+        hookDebugCheck();
+        hookRuntimeExec(cl);
+        hookFileExists(cl);
+        hookMapsReading(cl);
+        hookNativeLoad(cl);
+    }
+
+    private static void hookDebugCheck() {
+        try {
+            XposedHelpers.findAndHookMethod(Debug.class, "isDebuggerConnected", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    param.setResult(false);
+                }
+            });
+            Log.i(TAG, "Debug.isDebuggerConnected hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "hookDebugCheck failed: " + e.getMessage());
+        }
+    }
+
+    private static void hookRuntimeExec(ClassLoader cl) {
+        try {
+            XposedHelpers.findAndHookMethod(Runtime.class, "exec", String.class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    String cmd = (String) param.args[0];
+                    if (cmd != null) {
+                        String lower = cmd.toLowerCase();
+                        if (lower.contains("which") && lower.contains("su")) {
+                            param.setResult(null);
+                        } else if (lower.contains("magisk") || lower.contains("supersu")) {
+                            param.setResult(null);
+                        }
+                    }
+                }
+            });
+            XposedHelpers.findAndHookMethod(Runtime.class, "exec", String[].class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    String[] cmds = (String[]) param.args[0];
+                    if (cmds != null && cmds.length > 0) {
+                        String cmd = cmds[0].toLowerCase();
+                        if (cmd.contains("which") && (cmds.length > 1 && cmds[1].contains("su"))) {
+                            param.setResult(null);
+                        } else if (cmd.contains("magisk") || cmd.contains("supersu")) {
+                            param.setResult(null);
+                        }
+                    }
+                }
+            });
+            Log.i(TAG, "Runtime.exec hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "hookRuntimeExec failed: " + e.getMessage());
+        }
+    }
+
+    private static void hookFileExists(ClassLoader cl) {
+        try {
+            XposedHelpers.findAndHookMethod(File.class, "exists", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    File file = (File) param.thisObject;
+                    String path = file.getAbsolutePath();
+                    if (path.contains("/proc/") && path.contains("/maps")) {
+                        return;
+                    }
+                    if (path.contains("xposed") || path.contains("Xposed") ||
+                        path.contains("/su") || path.contains("magisk") ||
+                        path.contains("Magisk") || path.contains("supersu") ||
+                        path.contains("SuperSU") || path.contains("Superuser")) {
+                        param.setResult(false);
+                    }
+                }
+            });
+            Log.i(TAG, "File.exists hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "hookFileExists failed: " + e.getMessage());
+        }
+    }
+
+    private static void hookMapsReading(ClassLoader cl) {
+        try {
+            XposedHelpers.findAndHookMethod(BufferedReader.class, "readLine", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    String line = (String) param.getResult();
+                    if (line == null) return;
+                    String lower = line.toLowerCase();
+                    if (lower.contains("xposed") || lower.contains("libxposed") ||
+                        lower.contains("edxposed") || lower.contains("lsposed") ||
+                        lower.contains("libpine") || lower.contains("liblspd") ||
+                        lower.contains("substrate") || lower.contains("frida") ||
+                        lower.contains("gadget") || lower.contains("gmain")) {
+                        param.setResult(null);
+                    }
+                }
+            });
+            Log.i(TAG, "BufferedReader.readLine hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "hookMapsReading failed: " + e.getMessage());
+        }
+    }
+
+    private static void hookNativeLoad(ClassLoader cl) {
+        try {
+            XposedHelpers.findAndHookMethod(Runtime.class, "loadLibrary", String.class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    String libName = (String) param.args[0];
+                    if (libName != null) {
+                        String lower = libName.toLowerCase();
+                        if (lower.contains("xposed") || lower.contains("frida") ||
+                            lower.contains("substrate") || lower.contains("gadget")) {
+                            Log.w(TAG, "Blocked suspicious native library load: " + libName);
+                            param.setResult(null);
+                        }
+                    }
+                }
+            });
+            XposedHelpers.findAndHookMethod(Runtime.class, "loadLibrary0", ClassLoader.class, String.class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    String libName = (String) param.args[1];
+                    if (libName != null) {
+                        String lower = libName.toLowerCase();
+                        if (lower.contains("xposed") || lower.contains("frida") ||
+                            lower.contains("substrate") || lower.contains("gadget")) {
+                            Log.w(TAG, "Blocked suspicious native library load (0): " + libName);
+                            param.setResult(null);
+                        }
+                    }
+                }
+            });
+            Log.i(TAG, "Runtime.loadLibrary hook installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "hookNativeLoad failed: " + e.getMessage());
         }
     }
 }

@@ -169,6 +169,11 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
         try {
             PairIpHook.hookIfPresent(cl);
         } catch (Throwable ignored) { }
+        try {
+            if (com.vcore.BlackBoxCore.get().isHideXposed()) {
+                com.vcore.core.NativeCore.hideXposed();
+            }
+        } catch (Throwable ignored) { }
         super.callApplicationOnCreate(app);
     }
 

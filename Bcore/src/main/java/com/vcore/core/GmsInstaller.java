@@ -3,7 +3,6 @@ package com.vcore.core;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.os.Environment;
 import android.util.Log;
 
 import java.io.File;
@@ -131,26 +130,34 @@ public class GmsInstaller {
         
         BlackBoxCore blackBoxCore = BlackBoxCore.get();
         
-        // Install GMS first (required for all other Google services)
+        // Only GMS Core is truly required. GSF/Login are optional on modern
+        // Android and may be absent from the host; install whatever is present
+        // instead of failing the whole bundle when one is missing.
         String[] coreServices = {
             GmsCore.GMS_PKG,
             GmsCore.GSF_PKG,
             GmsCore.GMS_LOGIN_PKG
         };
         
+        boolean installedAny = false;
         for (String packageName : coreServices) {
             if (blackBoxCore.isInstalled(packageName, mUserId)) {
-                Log.i(TAG, "Already installed: " + packageName);
+                installedAny = true;
                 continue;
             }
             
             InstallResult result = installPackage(packageName);
-            if (!result.success) {
-                Log.e(TAG, "Failed to install core service: " + packageName);
-                return result;
+            if (result.success) {
+                installedAny = true;
+                Log.i(TAG, "Installed core service: " + packageName);
+            } else {
+                // Non-essential core package missing on host; skip and continue.
+                Log.w(TAG, "Core service unavailable: " + packageName + " (" + result.msg + ")");
             }
-            
-            Log.i(TAG, "Installed core service: " + packageName);
+        }
+        
+        if (!installedAny) {
+            return new InstallResult().installError("GMS Play Services not available on host device");
         }
         
         return new InstallResult();
@@ -233,21 +240,23 @@ public class GmsInstaller {
     
     private InstallResult installPackage(String packageName) {
         BlackBoxCore blackBoxCore = BlackBoxCore.get();
-        
-        // First try to install from host
+
+        // Prefer the host device's real GMS APK. Its sourceDir points at Google's
+        // signed APK, preserving the real GMS signature that apps verify.
         try {
             PackageInfo packageInfo = mContext.getPackageManager().getPackageInfo(packageName, 0);
             String apkPath = packageInfo.applicationInfo.sourceDir;
-            
-            InstallResult result = blackBoxCore.installPackageAsUser(apkPath, mUserId);
-            if (result.success) {
-                return result;
+            if (apkPath != null) {
+                InstallResult result = blackBoxCore.installPackageAsUser(apkPath, mUserId);
+                if (result.success) {
+                    return result;
+                }
             }
         } catch (PackageManager.NameNotFoundException e) {
             Log.w(TAG, "Package not found on host: " + packageName);
         }
-        
-        // Try to install from assets
+
+        // Fall back to an APK bundled in assets if one was supplied.
         String apkFileName = GMS_APK_MAP.get(packageName);
         if (apkFileName != null) {
             File apkFile = new File(mGmsDir, apkFileName);
@@ -258,27 +267,21 @@ public class GmsInstaller {
                 }
             }
         }
-        
-        return new InstallResult().installError("Package not available: " + packageName);
+
+        return new InstallResult().installError("Package not available on host: " + packageName);
     }
     
     private void initializeGmsConfig() {
         Log.i(TAG, "Initializing GMS configuration");
-        
+
         // Create GMS config directory structure
         File gmsConfigDir = new File(mConfigDir, "com.google.android.gms");
         gmsConfigDir.mkdirs();
-        
-        // Create device registration file
+
+        // Real device info used by GMS for registration
         File deviceInfoFile = new File(gmsConfigDir, "device_info.xml");
         if (!deviceInfoFile.exists()) {
             createDeviceInfoFile(deviceInfoFile);
-        }
-        
-        // Create GMS settings file
-        File gmsSettingsFile = new File(gmsConfigDir, "gms_settings.xml");
-        if (!gmsSettingsFile.exists()) {
-            createGmsSettingsFile(gmsSettingsFile);
         }
     }
     
@@ -309,28 +312,6 @@ public class GmsInstaller {
             Log.i(TAG, "Created device info file");
         } catch (IOException e) {
             Log.e(TAG, "Failed to create device info file", e);
-        }
-    }
-    
-    private void createGmsSettingsFile(File file) {
-        try {
-            String gmsSettings = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                "<gms_settings>\n" +
-                "    <version>1</version>\n" +
-                "    <user_id>" + mUserId + "</user_id>\n" +
-                "    <gms_version>24.30.14</gms_version>\n" +
-                "    <setup_wizard_done>true</setup_wizard_done>\n" +
-                "    <device_registered>true</device_registered>\n" +
-                "    <account_added>true</account_added>\n" +
-                "</gms_settings>";
-            
-            FileOutputStream fos = new FileOutputStream(file);
-            fos.write(gmsSettings.getBytes());
-            fos.close();
-            
-            Log.i(TAG, "Created GMS settings file");
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to create GMS settings file", e);
         }
     }
     

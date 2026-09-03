@@ -6,20 +6,30 @@ This implementation adds complete Google Mobile Services (GMS) support to Androi
 
 ## Files Added/Modified
 
-### New Files:
-1. **GmsInstaller.java** - Handles GMS bundle installation from assets
-2. **GmsConfig.java** - Manages device registration and authentication tokens
-3. **AccountHelper.java** - Manages Google/Firebase accounts
-4. **IGoogleServicesProxy.java** - Hooks Google Services bindings
-5. **FirebaseAuthProxy.java** - Hooks Firebase Auth calls
-6. **GoogleSignInProxy.java** - Hooks Google Sign-In calls
-7. **google-services.json** - Firebase configuration template
+# GMS Bundle + Firebase Auth + Google Sign-In Integration
 
-### Modified Files:
-1. **GmsCore.java** - Updated with complete GMS package list
-2. **HookManager.java** - Registered new proxies
-3. **build.gradle.kts** - Added Firebase/Google dependencies
-4. **AndroidManifest.xml** - Added required permissions and activities
+## Summary
+
+This implementation adds Google Mobile Services (GMS) support to Android-Virtual-Inject by installing the **real** GMS packages into the virtual environment. Real Google Sign-In and Firebase Auth work when a real Google account is signed in and the app has a real Firebase config, exactly like a physical phone.
+
+## Important: Real vs Fake
+
+- **Real**: GMS APKs are extracted from the host device's real GMS install and installed into the virtual env via `installPackageAsUser`. This keeps Google's real signatures, so GMS signature checks pass.
+- **No fake/mock proxies**: The previous fake `BinderInvocationStub` proxies (`IGoogleServicesProxy`, `FirebaseAuthProxy`, `GoogleSignInProxy`) were removed — they returned null from `getWho()` (their service names aren't Android framework services) and could never provide real login. PairIp's fake `PackageInfo` hook, which caused "signature is invalid", was also removed.
+
+## Files
+
+### New Files:
+1. **GmsInstaller.java** - Installs real GMS packages into the virtual environment
+2. **GmsConfig.java** - Per-user GMS config
+3. **AccountHelper.java** - Google/Firebase account helper
+4. **GmsCore.java** - GMS package constants and host-GMS detection
+5. **GmsNativeBridge.java** - JNI bridge (device metadata)
+6. **google-services.json** - Firebase configuration template (MUST be replaced)</think>
+
+<｜DSML｜tool_calls>
+<｜DSML｜invoke name="edit">
+<｜DSML｜parameter name="filePath" string="true">/root/Android-Virtual-Inject/GMS_INTEGRATION.md
 
 ## How to Use
 
@@ -73,29 +83,21 @@ If not provided, the installer will use packages from the host device.
 ### GMS Bundle Installation
 ```
 GmsInstaller
-├── Copy APKs from assets
-├── Install GMS Core Services
-├── Install Firebase Auth Packages
-├── Install Google Sign-In Packages
-└── Initialize GMS Configuration
+├── Detect GMS on host (GmsCore.isSupportGms)
+├── Copy APKs from assets (or use host GMS directly)
+├── Install GMS Core into virtual env (installPackageAsUser)
+├── Initialize GMS Config
+└── Install Firebase / Sign-In / Play packages
 ```
 
-### Authentication Flow
-```
-Game Request → FirebaseAuthProxy → Generate Token → Return to Game
-                ↓
-         GmsConfig (Token Cache)
-                ↓
-         AccountHelper (Account Management)
-```
+Real GMS in the virtual env talks to the same Google servers as a physical phone. Login is real — it requires a real Google account and a real Firebase project.
 
-### Service Hooks
-```
-HookManager
-├── IGoogleServicesProxy (Google Services)
-├── FirebaseAuthProxy (Firebase Auth)
-└── GoogleSignInProxy (Google Sign-In)
-```
+## Requirements for Real Login
+
+1. **GMS must be installed on the host device** (so the installer can bring its packages into the virtual env with real signatures).
+2. **A real `google-services.json`** from your Firebase project (replace `app/google-services.json`).
+3. **The app's signing certificate SHA-1 must be registered** in Firebase (Google Sign-In verifies the OAuth client against the app's signature).
+4. **A real Google account** to sign in with.
 
 ## Troubleshooting
 
@@ -105,28 +107,23 @@ HookManager
 3. Try installing GMS APKs manually in `assets/gms_bundle/`
 
 ### Firebase Auth Not Working
-1. Verify `google-services.json` is correct
-2. Check if Firebase Auth package is installed
-3. Look for errors: `adb logcat -s FirebaseAuthProxy`
+1. Verify `google-services.json` is correct (real Firebase project)
+2. Check that the app signing SHA-1 is registered in Firebase
+3. Ensure GMS installed in the virtual env
+4. Look for errors: `adb logcat -s GmsInstaller`
 
 ### Google Sign-In Not Working
-1. Ensure Google Play Services is up to date
-2. Check account configuration
+1. Ensure Google Play Services is up to date in the virtual env
+2. Check that `google-services.json` OAuth client matches the signing key
 3. Verify permissions in AndroidManifest.xml
-
-## Testing
-
-Run the test script:
-```bash
-javac /tmp/TestGMS.java -d /tmp && java -cp /tmp TestGMS
-```
+4. A real Google account must be added/signed in
 
 ## Notes
 
 - GMS must be installed on the host device for the virtual environment to work
 - Some games may require specific GMS versions
-- Token refresh is handled automatically
-- All tokens are cached for performance
+- This is a REAL integration, not a mock/spoof — login requires real Google/Firebase credentials
+- The previous fake proxies were removed because they could not provide real login
 
 ## License
 

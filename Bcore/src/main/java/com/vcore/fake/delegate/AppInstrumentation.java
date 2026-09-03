@@ -24,7 +24,6 @@ import com.vcore.fake.hook.HookManager;
 import com.vcore.fake.hook.IInjectHook;
 import com.vcore.fake.service.HCallbackProxy;
 import com.vcore.fake.service.IActivityClientProxy;
-import black.pairip.PairIpHook;
 import com.vcore.utils.compat.ActivityCompat;
 import com.vcore.utils.compat.ActivityManagerCompat;
 import com.vcore.utils.compat.BuildCompat;
@@ -165,16 +164,6 @@ public final class AppInstrumentation extends BaseInstrumentationDelegate implem
     @Override
     public void callApplicationOnCreate(Application app) {
         checkHCallback();
-        ClassLoader cl = targetAppClassLoader != null ? targetAppClassLoader : app.getClassLoader();
-        try {
-            PairIpHook.hookIfPresent(cl);
-        } catch (Throwable ignored) { }
-        try {
-            ClassLoader hostCl = app.getClassLoader();
-            if (hostCl != cl) {
-                PairIpHook.hookGmsOnly(hostCl);
-            }
-        } catch (Throwable ignored) { }
         try {
             if (com.vcore.BlackBoxCore.get().isHideXposed()) {
                 com.vcore.core.NativeCore.hideXposed();

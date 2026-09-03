@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("dev.rikka.tools.materialthemebuilder")
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -97,6 +98,10 @@ materialThemeBuilder {
 
 dependencies {
     implementation(project(":Bcore"))
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.play.services.auth)
 
     implementation(libs.bundles.androidx)
     implementation(libs.bundles.rikkax)

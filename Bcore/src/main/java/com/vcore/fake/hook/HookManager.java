@@ -65,9 +65,6 @@ import com.vcore.fake.service.IVpnManagerProxy;
 import com.vcore.fake.service.IWifiManagerProxy;
 import com.vcore.fake.service.IWifiScannerProxy;
 import com.vcore.fake.service.IWindowManagerProxy;
-import com.vcore.fake.service.IGoogleServicesProxy;
-import com.vcore.fake.service.FirebaseAuthProxy;
-import com.vcore.fake.service.GoogleSignInProxy;
 import com.vcore.fake.service.context.ContentServiceProxy;
 import com.vcore.fake.service.context.RestrictionsManagerProxy;
 import com.vcore.fake.service.libcore.OsProxy;
@@ -129,10 +126,6 @@ public class HookManager {
             addInjector(new IPowerManagerProxy());
             addInjector(new IVibratorServiceProxy());
             addInjector(new IPersistentDataBlockServiceProxy());
-            // Google Services and GMS hooks
-            addInjector(new IGoogleServicesProxy());
-            addInjector(new FirebaseAuthProxy());
-            addInjector(new GoogleSignInProxy());
             addInjector(AppInstrumentation.get());
 
             addInjector(new BuildProxy());

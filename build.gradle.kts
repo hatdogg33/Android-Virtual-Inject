@@ -23,6 +23,7 @@ plugins {
     alias(libs.plugins.agp.lib) apply false
     id("org.jetbrains.kotlin.android") version "2.0.0" apply false
     alias(libs.plugins.materialthemebuilder) apply false
+    alias(libs.plugins.google.services) apply false
 }
 
 tasks.register<Delete>("clean") {

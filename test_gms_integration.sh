@@ -17,9 +17,7 @@ files=(
     "Bcore/src/main/java/com/vcore/core/GmsInstaller.java"
     "Bcore/src/main/java/com/vcore/core/GmsConfig.java"
     "Bcore/src/main/java/com/vcore/core/AccountHelper.java"
-    "Bcore/src/main/java/com/vcore/fake/service/IGoogleServicesProxy.java"
-    "Bcore/src/main/java/com/vcore/fake/service/FirebaseAuthProxy.java"
-    "Bcore/src/main/java/com/vcore/fake/service/GoogleSignInProxy.java"
+    "Bcore/src/main/java/com/vcore/core/GmsNativeBridge.java"
     "app/google-services.json"
     "Bcore/src/main/assets/gms_bundle/README.md"
 )
@@ -55,23 +53,11 @@ else
 fi
 
 echo ""
-echo "3. Checking HookManager registration..."
-if grep -q "IGoogleServicesProxy" Bcore/src/main/java/com/vcore/fake/hook/HookManager.java; then
-    echo "   ✓ IGoogleServicesProxy"
+echo "3. Checking HookManager no longer references removed fake proxies..."
+if grep -q "IGoogleServicesProxy\|FirebaseAuthProxy\|GoogleSignInProxy" Bcore/src/main/java/com/vcore/fake/hook/HookManager.java; then
+    echo "   ✗ Removed fake proxies still referenced (must be removed)"
 else
-    echo "   ✗ IGoogleServicesProxy (MISSING)"
-fi
-
-if grep -q "FirebaseAuthProxy" Bcore/src/main/java/com/vcore/fake/hook/HookManager.java; then
-    echo "   ✓ FirebaseAuthProxy"
-else
-    echo "   ✗ FirebaseAuthProxy (MISSING)"
-fi
-
-if grep -q "GoogleSignInProxy" Bcore/src/main/java/com/vcore/fake/hook/HookManager.java; then
-    echo "   ✓ GoogleSignInProxy"
-else
-    echo "   ✗ GoogleSignInProxy (MISSING)"
+    echo "   ✓ No removed fake proxies referenced"
 fi
 
 echo ""

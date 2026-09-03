@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "884035582605",
+    "project_id": "virtualinject",
+    "storage_bucket": "virtualinject.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:884035582605:android:40e7a211c8eeda3aae40c4",
+        "android_client_info": {
+          "package_name": "com.reveny.virtualinject"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "884035582605-oud2mpv5if142nerikbcchh17pjhi0ak.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.reveny.virtualinject",
+            "certificate_hash": "423db932c7529259774e40803e42046c6f4fc360"
+          }
+        },
+        {
+          "client_id": "884035582605-38e3fppkshhscfdusjr769qb64btkhcu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3QQbOCjnyoYOeYrt_QBB6_N-aelGTx2o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "884035582605-38e3fppkshhscfdusjr769qb64btkhcu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

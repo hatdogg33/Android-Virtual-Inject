@@ -116,7 +116,10 @@ public class IActivityManagerProxy extends ClassInvocationStub {
                     args[1] = BlackBoxCore.getHostPkg();
                 }
 
-                if (auth.equals("settings") || auth.equals("media") || auth.equals("telephony")) {
+                if (auth.equals("settings") || auth.equals("media") || auth.equals("telephony")
+                        || auth.equals("com.google.android.gms.chimera")
+                        || auth.equals("com.google.android.gms.googlecertificates")
+                        || auth.equals("com.google.android.gms.phenotype")) {
                     content = method.invoke(who, args);
                     ContentProviderDelegate.update(content, (String) auth);
                     return content;

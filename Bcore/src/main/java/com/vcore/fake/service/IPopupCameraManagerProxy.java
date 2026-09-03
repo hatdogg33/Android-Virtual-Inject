@@ -1,12 +1,11 @@
 package com.vcore.fake.service;
 
-import android.os.IBinder;
+import android.content.Context;
 
 import black.android.os.ServiceManager;
 import black.oem.vivo.IPopupCameraManager;
 import com.vcore.fake.hook.BinderInvocationStub;
 import com.vcore.fake.service.base.PkgMethodProxy;
-import com.vcore.utils.Slog;
 
 /**
  * @author Findger
@@ -14,24 +13,14 @@ import com.vcore.utils.Slog;
  * @date :2023/10/8 20:19
  **/
 public class IPopupCameraManagerProxy extends BinderInvocationStub {
-    private final IBinder mBaseBinder;
 
     public IPopupCameraManagerProxy() {
-        IBinder binder = ServiceManager.getService.call("popup_camera_service");
-        if (binder == null) {
-            Slog.d("IPopupCameraManagerProxy", "popup_camera_service not found, skipping hook");
-            mBaseBinder = null;
-        } else {
-            mBaseBinder = binder;
-        }
+        super(ServiceManager.getService.call("popup_camera_service"));
     }
 
     @Override
     protected Object getWho() {
-        if (mBaseBinder == null) {
-            return null;
-        }
-        return IPopupCameraManager.Stub.asInterface.call(mBaseBinder);
+        return IPopupCameraManager.Stub.asInterface.call(ServiceManager.getService.call("popup_camera_service"));
     }
 
     @Override
@@ -41,7 +30,7 @@ public class IPopupCameraManagerProxy extends BinderInvocationStub {
 
     @Override
     public boolean isBadEnv() {
-        return mBaseBinder == null;
+        return false;
     }
 
     @Override

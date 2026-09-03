@@ -12,34 +12,32 @@ import com.vcore.utils.Slog;
 
 public class FirebaseAuthProxy extends BinderInvocationStub {
     private static final String TAG = "FirebaseAuthProxy";
-    private final IBinder mBaseBinder;
 
     public FirebaseAuthProxy() {
-        IBinder binder = ServiceManager.getService.call("com.google.android.gms.auth.fallback.FallbackAuthenticationService");
-        mBaseBinder = binder;
+        super(ServiceManager.getService.call(getServiceName()));
+    }
+
+    private static String getServiceName() {
+        return "com.google.android.gms.auth.fallback.FallbackAuthenticationService";
     }
 
     @Override
     protected Object getWho() {
-        if (mBaseBinder == null) return null;
-        return mBaseBinder;
+        return ServiceManager.getService.call(getServiceName());
     }
 
     @Override
     protected void inject(Object baseInvocation, Object proxyInvocation) {
-        replaceSystemService("com.google.android.gms.auth.fallback.FallbackAuthenticationService");
+        replaceSystemService(getServiceName());
     }
 
     @Override
     protected void onBindMethod() {
         super.onBindMethod();
-        if (mBaseBinder == null) return;
-
         addMethodHook(new MethodHook() {
             @Override
             protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-                String name = method.getName();
-                Log.d(TAG, "Firebase Auth hook: " + name);
+                Log.d(TAG, "Firebase Auth hook: " + method.getName());
                 try {
                     return method.invoke(who, args);
                 } catch (Exception e) {
@@ -52,6 +50,6 @@ public class FirebaseAuthProxy extends BinderInvocationStub {
 
     @Override
     public boolean isBadEnv() {
-        return mBaseBinder == null;
+        return false;
     }
 }

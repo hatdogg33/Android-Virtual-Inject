@@ -1,44 +1,41 @@
 package com.vcore.fake.service;
 
-import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 
 import java.lang.reflect.Method;
 
 import black.android.os.ServiceManager;
-import com.vcore.BlackBoxCore;
-import com.vcore.core.GmsConfig;
 import com.vcore.fake.hook.BinderInvocationStub;
 import com.vcore.fake.hook.MethodHook;
-import com.vcore.fake.hook.ProxyMethod;
 import com.vcore.utils.Slog;
 
 public class IGoogleServicesProxy extends BinderInvocationStub {
     private static final String TAG = "IGoogleServicesProxy";
-    private final IBinder mBaseBinder;
+    private final String mServiceName;
 
     public IGoogleServicesProxy() {
-        IBinder binder = ServiceManager.getService.call("com.google.android.gms.googlehelp.internal.ITracingService");
-        mBaseBinder = binder;
+        super(ServiceManager.getService.call(getServiceName()));
+        mServiceName = getServiceName();
+    }
+
+    private static String getServiceName() {
+        return "com.google.android.gms.googlehelp.internal.ITracingService";
     }
 
     @Override
     protected Object getWho() {
-        if (mBaseBinder == null) return null;
-        return mBaseBinder;
+        return ServiceManager.getService.call(mServiceName);
     }
 
     @Override
     protected void inject(Object baseInvocation, Object proxyInvocation) {
-        replaceSystemService("com.google.android.gms.googlehelp.internal.ITracingService");
+        replaceSystemService(mServiceName);
     }
 
     @Override
     protected void onBindMethod() {
         super.onBindMethod();
-        if (mBaseBinder == null) return;
-
         addMethodHook(new MethodHook() {
             @Override
             protected Object hook(Object who, Method method, Object[] args) throws Throwable {
@@ -46,7 +43,7 @@ public class IGoogleServicesProxy extends BinderInvocationStub {
                 try {
                     return method.invoke(who, args);
                 } catch (Exception e) {
-                    Log.w(TAG, "GMS call failed, returning defaults: " + e.getMessage());
+                    Log.w(TAG, "GMS call failed: " + e.getMessage());
                     return null;
                 }
             }
@@ -55,10 +52,6 @@ public class IGoogleServicesProxy extends BinderInvocationStub {
 
     @Override
     public boolean isBadEnv() {
-        return mBaseBinder == null;
-    }
-
-    public static boolean isGoogleServicesPackage(String packageName) {
-        return "com.google.android.gms".equals(packageName);
+        return false;
     }
 }

@@ -12,34 +12,32 @@ import com.vcore.utils.Slog;
 
 public class GoogleSignInProxy extends BinderInvocationStub {
     private static final String TAG = "GoogleSignInProxy";
-    private final IBinder mBaseBinder;
 
     public GoogleSignInProxy() {
-        IBinder binder = ServiceManager.getService.call("com.google.android.gms.auth.api.signin.SignInService");
-        mBaseBinder = binder;
+        super(ServiceManager.getService.call(getServiceName()));
+    }
+
+    private static String getServiceName() {
+        return "com.google.android.gms.auth.api.signin.SignInService";
     }
 
     @Override
     protected Object getWho() {
-        if (mBaseBinder == null) return null;
-        return mBaseBinder;
+        return ServiceManager.getService.call(getServiceName());
     }
 
     @Override
     protected void inject(Object baseInvocation, Object proxyInvocation) {
-        replaceSystemService("com.google.android.gms.auth.api.signin.SignInService");
+        replaceSystemService(getServiceName());
     }
 
     @Override
     protected void onBindMethod() {
         super.onBindMethod();
-        if (mBaseBinder == null) return;
-
         addMethodHook(new MethodHook() {
             @Override
             protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-                String name = method.getName();
-                Log.d(TAG, "Google Sign-In hook: " + name);
+                Log.d(TAG, "Google Sign-In hook: " + method.getName());
                 try {
                     return method.invoke(who, args);
                 } catch (Exception e) {
@@ -52,6 +50,6 @@ public class GoogleSignInProxy extends BinderInvocationStub {
 
     @Override
     public boolean isBadEnv() {
-        return mBaseBinder == null;
+        return false;
     }
 }

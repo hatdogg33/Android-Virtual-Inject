@@ -335,6 +335,38 @@ public class IPackageManagerProxy extends BinderInvocationStub {
                 int flags = (int) args[0];
                 installedPackages = BlackBoxCore.getBPackageManager().getInstalledPackages(flags, BActivityThread.getUserId());
             }
+
+            if (installedPackages == null) {
+                installedPackages = new ArrayList<>();
+            }
+
+            List<String> seen = new ArrayList<>();
+            for (PackageInfo pi : installedPackages) {
+                if (pi.packageName != null) {
+                    seen.add(pi.packageName);
+                }
+            }
+
+            try {
+                PackageManager pm = BlackBoxCore.getContext().getPackageManager();
+                if (pm != null) {
+                    String[] gmsPkgs = {
+                        "com.google.android.gms",
+                        "com.google.android.gsf",
+                        "com.google.android.gsf.login",
+                        "com.android.vending",
+                        "com.google.android.play.games"
+                    };
+                    for (String pkg : gmsPkgs) {
+                        if (!seen.contains(pkg)) {
+                            try {
+                                installedPackages.add(pm.getPackageInfo(pkg, 0));
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
             return ParceledListSliceCompat.create(installedPackages);
         }
     }

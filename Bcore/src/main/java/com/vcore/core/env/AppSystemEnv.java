@@ -27,7 +27,16 @@ public class AppSystemEnv {
 
         // Google Gboard
         sSystemPackages.add("com.google.android.inputmethod.latin");
-        // sSystemPackages.add(BlackBoxCore.getHostPkg());
+
+        // Google Play Services & GMS - required for Google Sign-In / Play Games
+        sSystemPackages.add("com.google.android.gms");
+        sSystemPackages.add("com.google.android.gsf");
+        sSystemPackages.add("com.google.android.gsf.login");
+        sSystemPackages.add("com.android.vending");
+        sSystemPackages.add("com.google.android.play.games");
+        sSystemPackages.add("com.google.android.gms.auth");
+        sSystemPackages.add("com.google.android.gms.gcm");
+        sSystemPackages.add("com.google.android.gms.iid");
 
         // 华为
         sSystemPackages.add("com.huawei.webview");

@@ -17,7 +17,6 @@ include_directories(gms)
 aux_source_directory(./ SRC1)
 aux_source_directory(Hook SRC2)
 aux_source_directory(JniHook SRC3)
-aux_source_directory(gms SRC_GMS)
 add_compile_options(-w)
 
 add_library( # Sets the name of the library.
@@ -28,8 +27,7 @@ add_library( # Sets the name of the library.
         BoxCore.cpp
         ${SRC1}
         ${SRC2}
-        ${SRC3}
-        ${SRC_GMS})
+        ${SRC3})
 
 # GMS Bridge library
 add_library( # Sets the name of the library.

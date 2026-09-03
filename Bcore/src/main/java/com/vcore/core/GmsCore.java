@@ -155,7 +155,7 @@ public class GmsCore {
 
         InstallResult installResult = installPackages(gmsBundle, userId);
         if (!installResult.success) {
-            Log.e(TAG, "Failed to install GMS bundle: " + installResult.error);
+            Log.e(TAG, "Failed to install GMS bundle: " + installResult.msg);
             uninstallGApps(userId);
             return installResult;
         }

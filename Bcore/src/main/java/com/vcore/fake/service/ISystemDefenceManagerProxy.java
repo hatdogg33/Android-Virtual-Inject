@@ -6,6 +6,7 @@ import black.android.os.ServiceManager;
 import black.oem.vivo.ISystemDefenceManager;
 import com.vcore.fake.hook.BinderInvocationStub;
 import com.vcore.fake.service.base.PkgMethodProxy;
+import com.vcore.utils.Slog;
 
 /**
  * @author Findger
@@ -13,13 +14,24 @@ import com.vcore.fake.service.base.PkgMethodProxy;
  * @date :2023/10/8 20:30
  **/
 public class ISystemDefenceManagerProxy extends BinderInvocationStub {
+    private final IBinder mBaseBinder;
+
     public ISystemDefenceManagerProxy() {
-        super(ServiceManager.getService.call("system_defence_service"));
+        IBinder binder = ServiceManager.getService.call("system_defence_service");
+        if (binder == null) {
+            Slog.d("ISystemDefenceManagerProxy", "system_defence_service not found, skipping hook");
+            mBaseBinder = null;
+        } else {
+            mBaseBinder = binder;
+        }
     }
 
     @Override
     protected Object getWho() {
-        return ISystemDefenceManager.Stub.asInterface.call(ServiceManager.getService.call("system_defence_service"));
+        if (mBaseBinder == null) {
+            return null;
+        }
+        return ISystemDefenceManager.Stub.asInterface.call(mBaseBinder);
     }
 
     @Override
@@ -29,7 +41,7 @@ public class ISystemDefenceManagerProxy extends BinderInvocationStub {
 
     @Override
     public boolean isBadEnv() {
-        return false;
+        return mBaseBinder == null;
     }
 
     @Override

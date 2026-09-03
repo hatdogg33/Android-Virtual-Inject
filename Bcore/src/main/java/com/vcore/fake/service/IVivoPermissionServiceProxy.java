@@ -1,12 +1,12 @@
 package com.vcore.fake.service;
 
-import android.content.Context;
 import android.os.IBinder;
 
 import black.android.os.ServiceManager;
 import black.oem.vivo.IVivoPermissonService;
 import com.vcore.fake.hook.BinderInvocationStub;
 import com.vcore.fake.service.base.PkgMethodProxy;
+import com.vcore.utils.Slog;
 
 /**
  * @author Findger
@@ -14,13 +14,24 @@ import com.vcore.fake.service.base.PkgMethodProxy;
  * @date :2023/10/8 20:36
  **/
 public class IVivoPermissionServiceProxy extends BinderInvocationStub {
+    private final IBinder mBaseBinder;
+
     public IVivoPermissionServiceProxy() {
-        super(ServiceManager.getService.call("vivo_permission_service"));
+        IBinder binder = ServiceManager.getService.call("vivo_permission_service");
+        if (binder == null) {
+            Slog.d("IVivoPermissionServiceProxy", "vivo_permission_service not found, skipping hook");
+            mBaseBinder = null;
+        } else {
+            mBaseBinder = binder;
+        }
     }
 
     @Override
     protected Object getWho() {
-        return IVivoPermissonService.Stub.asInterface.call(ServiceManager.getService.call("vivo_permission_service"));
+        if (mBaseBinder == null) {
+            return null;
+        }
+        return IVivoPermissonService.Stub.asInterface.call(mBaseBinder);
     }
 
     @Override
@@ -30,7 +41,7 @@ public class IVivoPermissionServiceProxy extends BinderInvocationStub {
 
     @Override
     public boolean isBadEnv() {
-        return false;
+        return mBaseBinder == null;
     }
 
     @Override

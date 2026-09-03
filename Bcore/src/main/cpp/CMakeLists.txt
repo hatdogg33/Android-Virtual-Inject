@@ -13,9 +13,11 @@ project(vcore)
 # Gradle automatically packages shared libraries with your APK.
 include_directories(JniHook)
 include_directories(./)
+include_directories(gms)
 aux_source_directory(./ SRC1)
 aux_source_directory(Hook SRC2)
 aux_source_directory(JniHook SRC3)
+aux_source_directory(gms SRC_GMS)
 add_compile_options(-w)
 
 add_library( # Sets the name of the library.
@@ -26,7 +28,17 @@ add_library( # Sets the name of the library.
         BoxCore.cpp
         ${SRC1}
         ${SRC2}
-        ${SRC3})
+        ${SRC3}
+        ${SRC_GMS})
+
+# GMS Bridge library
+add_library( # Sets the name of the library.
+        gms_bridge
+        # Sets the library as a shared library.
+        SHARED
+        # Provides a relative path to your source file(s).
+        gms/gms_bridge.cpp
+        gms/gms_jni.cpp)
 
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because CMake includes system libraries in the search path by
@@ -52,3 +64,9 @@ target_link_libraries( # Specifies the target library.
         ${log-lib}
         z
         shadowhook::shadowhook)
+
+# Link GMS bridge library
+target_link_libraries(
+        gms_bridge
+        ${log-lib}
+        z)

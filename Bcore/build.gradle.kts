@@ -80,4 +80,9 @@ dependencies {
     implementation("com.bytedance.android:shadowhook:$shadowhook")
     implementation("top.canyie.pine:core:0.2.8")
     implementation("top.canyie.pine:xposed:0.0.9")
+    
+    // Google Play Services stubs (for compilation only)
+    implementation("com.google.android.gms:play-services-base:18.5.0")
+    implementation("com.google.android.gms:play-services-basement:18.5.0")
+    implementation("com.google.android.gms:play-services-tasks:18.2.0")
 }

@@ -1,12 +1,12 @@
 package com.vcore.fake.service;
 
-import android.content.Context;
 import android.os.IBinder;
 
 import black.android.os.ServiceManager;
 import black.oem.vivo.ISuperResolutionManager;
 import com.vcore.fake.hook.BinderInvocationStub;
 import com.vcore.fake.service.base.PkgMethodProxy;
+import com.vcore.utils.Slog;
 
 /**
  * @author Findger
@@ -14,27 +14,34 @@ import com.vcore.fake.service.base.PkgMethodProxy;
  * @date :2023/10/8 20:26
  **/
 public class ISuperResolutionManagerProxy extends BinderInvocationStub {
+    private final IBinder mBaseBinder;
 
     public ISuperResolutionManagerProxy() {
-        super(ServiceManager.getService.call("SuperResolutionManager"));
+        IBinder binder = ServiceManager.getService.call("SuperResolutionManager");
+        if (binder == null) {
+            Slog.d("ISuperResolutionManagerProxy", "SuperResolutionManager not found, skipping hook");
+            mBaseBinder = null;
+        } else {
+            mBaseBinder = binder;
+        }
     }
 
     @Override
     protected Object getWho() {
-        return ISuperResolutionManager.Stub.asInterface.call(ServiceManager.getService.call("SuperResolutionManager"));
+        if (mBaseBinder == null) {
+            return null;
+        }
+        return ISuperResolutionManager.Stub.asInterface.call(mBaseBinder);
     }
-
-
 
     @Override
     protected void inject(Object baseInvocation, Object proxyInvocation) {
         replaceSystemService("SuperResolutionManager");
     }
 
-
     @Override
     public boolean isBadEnv() {
-        return false;
+        return mBaseBinder == null;
     }
 
     @Override

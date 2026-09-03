@@ -1,17 +1,31 @@
 package com.vcore.fake.service;
 
+import android.os.IBinder;
+
 import black.android.net.wifi.IWifiManager;
 import black.android.os.ServiceManager;
 import com.vcore.fake.hook.BinderInvocationStub;
+import com.vcore.utils.Slog;
 
 public class IWifiScannerProxy extends BinderInvocationStub {
+    private final IBinder mBaseBinder;
+
     public IWifiScannerProxy() {
-        super(ServiceManager.getService.call("wifiscanner"));
+        IBinder binder = ServiceManager.getService.call("wifiscanner");
+        if (binder == null) {
+            Slog.d("IWifiScannerProxy", "wifiscanner not found, skipping hook");
+            mBaseBinder = null;
+        } else {
+            mBaseBinder = binder;
+        }
     }
 
     @Override
     protected Object getWho() {
-        return IWifiManager.Stub.asInterface.call(ServiceManager.getService.call("wifiscanner"));
+        if (mBaseBinder == null) {
+            return null;
+        }
+        return IWifiManager.Stub.asInterface.call(mBaseBinder);
     }
 
     @Override
@@ -21,6 +35,6 @@ public class IWifiScannerProxy extends BinderInvocationStub {
 
     @Override
     public boolean isBadEnv() {
-        return false;
+        return mBaseBinder == null;
     }
 }

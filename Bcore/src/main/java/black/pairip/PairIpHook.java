@@ -366,6 +366,9 @@ public class PairIpHook {
             XposedBridge.hookAllMethods(pmClass, "getPackageInfo", new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                    if (param.args == null || param.args.length == 0 || param.args[0] == null) {
+                        return;
+                    }
                     String pkg = (String) param.args[0];
                     if ("com.android.vending".equals(pkg) || "com.google.android.gms".equals(pkg)) {
                         Log.d(TAG, "getPackageInfo intercepted for: " + pkg + ", returning fake PackageInfo");

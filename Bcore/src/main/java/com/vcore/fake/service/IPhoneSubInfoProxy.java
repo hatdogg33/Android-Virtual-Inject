@@ -20,7 +20,13 @@ public class IPhoneSubInfoProxy extends BinderInvocationStub {
     public static final String TAG = "IPhoneSubInfoProxy";
 
     public IPhoneSubInfoProxy() {
-        super(ServiceManager.getService.call("iphonesubinfo"));
+        IBinder binder = ServiceManager.getService.call("iphonesubinfo");
+        if (binder == null) {
+            com.vcore.utils.Slog.d("IPhoneSubInfoProxy", "iphonesubinfo not found, skipping hook");
+            super(binder);
+        } else {
+            super(binder);
+        }
     }
 
     @Override

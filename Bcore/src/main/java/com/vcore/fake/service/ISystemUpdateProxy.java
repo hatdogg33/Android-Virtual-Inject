@@ -1,17 +1,31 @@
 package com.vcore.fake.service;
 
+import android.os.IBinder;
+
 import black.android.os.ServiceManager;
-import black.android.view.IAutoFillManager;
 import com.vcore.fake.hook.BinderInvocationStub;
+import com.vcore.utils.Slog;
 
 public class ISystemUpdateProxy extends BinderInvocationStub {
+    private final IBinder mBaseBinder;
+
     public ISystemUpdateProxy() {
-        super(ServiceManager.getService.call("system_update"));
+        IBinder binder = ServiceManager.getService.call("system_update");
+        if (binder == null) {
+            Slog.d("ISystemUpdateProxy", "system_update not found, skipping hook");
+            mBaseBinder = null;
+        } else {
+            mBaseBinder = binder;
+        }
     }
 
     @Override
     protected Object getWho() {
-        return IAutoFillManager.Stub.asInterface.call(ServiceManager.getService.call("system_update"));
+        if (mBaseBinder == null) {
+            return null;
+        }
+        // system_update service interface
+        return mBaseBinder;
     }
 
     @Override
@@ -21,6 +35,6 @@ public class ISystemUpdateProxy extends BinderInvocationStub {
 
     @Override
     public boolean isBadEnv() {
-        return false;
+        return mBaseBinder == null;
     }
 }

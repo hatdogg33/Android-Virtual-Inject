@@ -49,6 +49,34 @@
     <uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES" />
     <!-- google services framework end -->
 
+    <!-- firebase auth start -->
+    <uses-permission android:name="com.google.android.gms.auth.permission.SEND" />
+    <uses-permission android:name="com.google.android.gms.permission.GOOGLE_MESSAGES" />
+    <uses-permission android:name="com.google.android.gms.auth.cryptauth.permission.KEY_REGISTRATION" />
+    <uses-permission android:name="com.google.android.gms.auth.cryptauth.permission.SEND_CHALLENGE_RESPONSE" />
+    <uses-permission android:name="com.google.android.gms.auth.cryptauth.permission.ENROLL" />
+    <uses-permission android:name="com.google.android.gms.auth.cryptauth.permission.READ" />
+    <!-- firebase auth end -->
+
+    <!-- google sign-in start -->
+    <uses-permission android:name="com.google.android.gms.auth.permission.FIRST_PARTY_SIGN_IN" />
+    <uses-permission android:name="com.google.android.gms.games.permission.GAMES_OVERVIEW" />
+    <uses-permission android:name="com.google.android.gms.games.permission.PLAY_GAMES_DATA" />
+    <uses-permission android:name="com.google.android.gms.safetynet.permission.SAFETY_NET" />
+    <uses-permission android:name="com.google.android.gms.nearby.perm.DEVICES" />
+    <!-- google sign-in end -->
+
+    <!-- google play services start -->
+    <uses-permission android:name="com.google.android.gms.permission.NEARBY" />
+    <uses-permission android:name="com.google.android.gms.permission.BIND_NETWORK_SUGGESTION_SERVICE" />
+    <uses-permission android:name="com.google.android.gms.permission.ARRAY_OF_CONSENT" />
+    <uses-permission android:name="com.google.android.gms.permission.CHECKOUT" />
+    <uses-permission android:name="com.google.android.gms.permission.TRUSTED" />
+    <uses-permission android:name="com.google.android.gms.permission.READ_FLAGS" />
+    <uses-permission android:name="com.google.android.gms.permission.WRITE_FLAGS" />
+    <uses-permission android:name="com.google.android.gms.permission.GENEROUS_TETHERING" />
+    <!-- google play services end -->
+
     <!-- shortcut and badge start -->
     <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
     <uses-permission android:name="com.android.launcher.permission.UNINSTALL_SHORTCUT" />

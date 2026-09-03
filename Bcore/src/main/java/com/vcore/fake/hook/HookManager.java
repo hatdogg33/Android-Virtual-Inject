@@ -65,6 +65,9 @@ import com.vcore.fake.service.IVpnManagerProxy;
 import com.vcore.fake.service.IWifiManagerProxy;
 import com.vcore.fake.service.IWifiScannerProxy;
 import com.vcore.fake.service.IWindowManagerProxy;
+import com.vcore.fake.service.IGoogleServicesProxy;
+import com.vcore.fake.service.FirebaseAuthProxy;
+import com.vcore.fake.service.GoogleSignInProxy;
 import com.vcore.fake.service.context.ContentServiceProxy;
 import com.vcore.fake.service.context.RestrictionsManagerProxy;
 import com.vcore.fake.service.libcore.OsProxy;
@@ -126,6 +129,10 @@ public class HookManager {
             addInjector(new IPowerManagerProxy());
             addInjector(new IVibratorServiceProxy());
             addInjector(new IPersistentDataBlockServiceProxy());
+            // Google Services and GMS hooks
+            addInjector(new IGoogleServicesProxy());
+            addInjector(new FirebaseAuthProxy());
+            addInjector(new GoogleSignInProxy());
             addInjector(AppInstrumentation.get());
 
             addInjector(new BuildProxy());
@@ -149,7 +156,7 @@ public class HookManager {
                 addInjector(new ISystemUpdateProxy());
             }
             //fix flyme service
-            if (IFlymePermissionService.TYPE != null) {
+            if (IFlymePermissionService.TYPE.getClazz() != null) {
                 addInjector(new IFlymePermissionServiceProxy());
             }
             // 8.0
@@ -172,19 +179,19 @@ public class HookManager {
             if (BuildCompat.isL()) {
                 addInjector(new IJobServiceProxy());
             }
-            if (IPhysicalFlingManager.TYPE != null) {
+            if (IPhysicalFlingManager.TYPE.getClazz() != null) {
                 addInjector(new IPhysicalFlingManagerProxy());
             }
-            if (IPopupCameraManager.TYPE != null) {
+            if (IPopupCameraManager.TYPE.getClazz() != null) {
                 addInjector(new IPopupCameraManagerProxy());
             }
-            if (ISuperResolutionManager.TYPE != null) {
+            if (ISuperResolutionManager.TYPE.getClazz() != null) {
                 addInjector(new ISuperResolutionManagerProxy());
             }
-            if (ISystemDefenceManager.TYPE != null) {
+            if (ISystemDefenceManager.TYPE.getClazz() != null) {
                 addInjector(new ISystemDefenceManagerProxy());
             }
-            if (IVivoPermissonService.TYPE != null) {
+            if (IVivoPermissonService.TYPE.getClazz() != null) {
                 addInjector(new IVivoPermissionServiceProxy());
             }
         }
